@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ExternalLink, Copy, Users, FileText, CheckCircle2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ExternalLink, Copy, Users, FileText, CheckCircle2, ArrowRight } from "lucide-react";
 
 const StudentSurvey = () => {
   const { toast } = useToast();
@@ -87,6 +88,28 @@ const StudentSurvey = () => {
       </div>
 
       <div className="space-y-6">
+        {/* Quick Survey Card */}
+        <Card className="border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              Take Survey Now
+            </CardTitle>
+            <CardDescription>
+              Quick and easy - calculate your carbon footprint in 2 minutes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link to="/survey/form">
+              <Button className="w-full bg-green-600 hover:bg-green-700">
+                <FileText className="mr-2 h-4 w-4" />
+                Start Carbon Footprint Survey
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
         {/* Survey Generation Card */}
         <Card className="border-blue-200 dark:border-blue-800">
           <CardHeader>

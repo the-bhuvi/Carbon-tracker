@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { saveAdminFacilityData, saveCarbonHistory } from "@/lib/api";
 import { Building2, Lightbulb, Droplet, Trash2, Fuel, Calculator } from "lucide-react";
 
 interface AdminInputData {
@@ -25,6 +27,8 @@ interface AdminInputData {
 
 const AdminInput = () => {
   const { toast } = useToast();
+  const { user, userRole } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<AdminInputData>({
     classrooms: "",
     buildings: "",
@@ -41,7 +45,27 @@ const AdminInput = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const calculateCarbonFootprint = () => {
+  const calculateCarbonFootprint = async () => {
+    // Check authentication
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to save data.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check admin role
+    if (userRole !== 'admin') {
+      toast({
+        title: "Admin Access Required",
+        description: "Only admins can submit facility data.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Validate required fields
     const requiredFields = Object.entries(formData).filter(([key, value]) => !value);
     if (requiredFields.length > 0) {
@@ -53,92 +77,104 @@ const AdminInput = () => {
       return;
     }
 
-    // Emission factors (kg CO2e)
-    const emissionFactors = {
-      classroom: 500,      // per classroom per year
-      building: 2000,      // per building per year
-      hostel: 3000,        // per hostel per year
-      canteen: 1500,       // per canteen per year
-      foodVeg: 0.5,        // multiplier for vegetarian
-      foodMixed: 1.0,      // multiplier for mixed
-      foodNonVeg: 1.5,     // multiplier for non-veg
-      electricity: 0.82,   // per kWh
-      water: 0.298,        // per 1000 litres
-      waste: 0.5,          // per kg
-      fuel: 2.68           // per litre
-    };
+    setIsSubmitting(true);
 
-    // Calculate indirect emissions
-    const classroomEmissions = parseInt(formData.classrooms) * emissionFactors.classroom;
-    const buildingEmissions = parseInt(formData.buildings) * emissionFactors.building;
-    const hostelEmissions = parseInt(formData.hostels) * emissionFactors.hostel;
-    const canteenEmissions = parseInt(formData.canteens) * emissionFactors.canteen;
-    
-    const foodMultiplier = formData.foodType === "Vegetarian" ? emissionFactors.foodVeg :
-                          formData.foodType === "Non-vegetarian" ? emissionFactors.foodNonVeg :
-                          emissionFactors.foodMixed;
-    const foodEmissions = canteenEmissions * foodMultiplier;
+    try {
+      // Emission factors (kg CO2e)
+      const emissionFactors = {
+        classroom: 500,      // per classroom per year
+        building: 2000,      // per building per year
+        hostel: 3000,        // per hostel per year
+        canteen: 1500,       // per canteen per year
+        foodVeg: 0.5,        // multiplier for vegetarian
+        foodMixed: 1.0,      // multiplier for mixed
+        foodNonVeg: 1.5,     // multiplier for non-veg
+        electricity: 0.82,   // per kWh
+        water: 0.298,        // per 1000 litres
+        waste: 0.5,          // per kg
+        fuel: 2.68           // per litre
+      };
 
-    // Calculate direct emissions
-    const electricityEmissions = parseFloat(formData.electricity) * emissionFactors.electricity;
-    const waterEmissions = (parseFloat(formData.water) / 1000) * emissionFactors.water;
-    const wasteEmissions = parseFloat(formData.waste) * emissionFactors.waste;
-    const fuelEmissions = parseFloat(formData.fuel) * emissionFactors.fuel;
+      // Calculate indirect emissions
+      const classroomEmissions = parseInt(formData.classrooms) * emissionFactors.classroom;
+      const buildingEmissions = parseInt(formData.buildings) * emissionFactors.building;
+      const hostelEmissions = parseInt(formData.hostels) * emissionFactors.hostel;
+      const canteenEmissions = parseInt(formData.canteens) * emissionFactors.canteen;
+      
+      const foodMultiplier = formData.foodType === "Vegetarian" ? emissionFactors.foodVeg :
+                            formData.foodType === "Non-vegetarian" ? emissionFactors.foodNonVeg :
+                            emissionFactors.foodMixed;
+      const foodEmissions = canteenEmissions * foodMultiplier;
 
-    const totalEmissions = classroomEmissions + buildingEmissions + hostelEmissions + 
-                          foodEmissions + electricityEmissions + waterEmissions + 
-                          wasteEmissions + fuelEmissions;
+      // Calculate direct emissions
+      const electricityEmissions = parseFloat(formData.electricity) * emissionFactors.electricity;
+      const waterEmissions = (parseFloat(formData.water) / 1000) * emissionFactors.water;
+      const wasteEmissions = parseFloat(formData.waste) * emissionFactors.waste;
+      const fuelEmissions = parseFloat(formData.fuel) * emissionFactors.fuel;
 
-    // Save to localStorage (prepare for Firebase later)
-    const currentYear = new Date().getFullYear();
-    const academicYear = `${currentYear}-${currentYear + 1}`;
-    
-    const footprintData = {
-      academicYear,
-      timestamp: new Date().toISOString(),
-      inputs: formData,
-      emissions: {
-        electricity: electricityEmissions,
-        water: waterEmissions,
-        waste: wasteEmissions,
-        fuel: fuelEmissions,
-        food: foodEmissions,
-        infrastructure: classroomEmissions + buildingEmissions + hostelEmissions,
-        total: totalEmissions
-      }
-    };
+      const totalEmissions = classroomEmissions + buildingEmissions + hostelEmissions + 
+                            foodEmissions + electricityEmissions + waterEmissions + 
+                            wasteEmissions + fuelEmissions;
 
-    // Get existing data
-    const existingData = JSON.parse(localStorage.getItem("campusFootprintData") || "[]");
-    
-    // Check if data for current year exists, if so update it
-    const yearIndex = existingData.findIndex((d: any) => d.academicYear === academicYear);
-    if (yearIndex >= 0) {
-      existingData[yearIndex] = footprintData;
-    } else {
-      existingData.push(footprintData);
+      // Get current month and year
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+
+      // Save to Supabase
+      const facilityData = await saveAdminFacilityData({
+        classrooms: parseInt(formData.classrooms),
+        buildings: parseInt(formData.buildings),
+        hostels: parseInt(formData.hostels),
+        canteens: parseInt(formData.canteens),
+        food_type: formData.foodType.toLowerCase() as 'vegetarian' | 'non-vegetarian' | 'mixed',
+        electricity_kwh: parseFloat(formData.electricity),
+        water_liters: parseFloat(formData.water),
+        waste_kg: parseFloat(formData.waste),
+        fuel_liters: parseFloat(formData.fuel),
+        fuel_type: 'diesel',
+        total_carbon_kg: totalEmissions,
+        month: currentMonth,
+        year: currentYear,
+      });
+
+      // Save to carbon history
+      await saveCarbonHistory('facility', facilityData.id, {
+        energy_carbon_kg: electricityEmissions,
+        waste_carbon_kg: wasteEmissions,
+        food_carbon_kg: foodEmissions,
+        total_carbon_kg: totalEmissions,
+        period_month: currentMonth,
+        period_year: currentYear,
+      });
+
+      toast({
+        title: "Success!",
+        description: `Carbon footprint saved: ${(totalEmissions / 1000).toFixed(2)} tons CO₂e`,
+      });
+
+      // Reset form
+      setFormData({
+        classrooms: "",
+        buildings: "",
+        hostels: "",
+        canteens: "",
+        foodType: "",
+        electricity: "",
+        water: "",
+        waste: "",
+        fuel: ""
+      });
+    } catch (error: any) {
+      console.error('Error saving data:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save data. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    localStorage.setItem("campusFootprintData", JSON.stringify(existingData));
-    localStorage.setItem("latestFootprint", JSON.stringify(footprintData));
-
-    toast({
-      title: "Success!",
-      description: `Carbon footprint calculated: ${(totalEmissions / 1000).toFixed(2)} tons CO₂e for ${academicYear}`,
-    });
-
-    // Reset form
-    setFormData({
-      classrooms: "",
-      buildings: "",
-      hostels: "",
-      canteens: "",
-      foodType: "",
-      electricity: "",
-      water: "",
-      waste: "",
-      fuel: ""
-    });
   };
 
   return (
@@ -312,10 +348,27 @@ const AdminInput = () => {
           onClick={calculateCarbonFootprint}
           className="w-full bg-green-600 hover:bg-green-700 text-white"
           size="lg"
+          disabled={isSubmitting || !user || userRole !== 'admin'}
         >
           <Calculator className="mr-2 h-5 w-5" />
-          Calculate Carbon Footprint
+          {isSubmitting ? 'Saving...' : 'Calculate & Save Carbon Footprint'}
         </Button>
+
+        {!user && (
+          <Alert>
+            <AlertDescription>
+              Please log in as an admin to submit facility data.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {user && userRole !== 'admin' && (
+          <Alert>
+            <AlertDescription>
+              Admin access required to submit facility data.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
     </div>
   );
