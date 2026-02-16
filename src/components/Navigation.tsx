@@ -11,7 +11,7 @@ const Navigation = () => {
   // Define navigation items based on role
   const getNavItems = () => {
     const baseItems = [
-      { path: "/", icon: LayoutDashboard, label: "Dashboard" },
+      { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
       { path: "/history", icon: History, label: "History" },
     ];
 
@@ -43,7 +43,7 @@ const Navigation = () => {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/dashboard" className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-green-600">
               <Leaf className="h-6 w-6 text-white" />
             </div>

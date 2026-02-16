@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { carbonSubmissionsApi, departmentsApi, usersApi, analyticsApi, emissionFactorsApi } from '@/lib/supabase';
+import { carbonSubmissionsApi, departmentsApi, usersApi, analyticsApi, emissionFactorsApi, supabase } from '@/lib/supabase';
 import type { CarbonSubmissionInput } from '@/types/database';
 
 // Carbon Submissions Hooks
@@ -108,7 +108,13 @@ export const useUpdateDepartment = () => {
 export const useCurrentUser = () => {
   return useQuery({
     queryKey: ['current-user'],
-    queryFn: () => usersApi.getCurrentUser()
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      return usersApi.getCurrentUser();
+    },
+    retry: false,
+    staleTime: 5 * 60 * 1000 // 5 minutes
   });
 };
 

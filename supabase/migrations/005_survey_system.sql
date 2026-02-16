@@ -206,7 +206,17 @@ BEGIN
   
   (student_survey_id, 'Your dietary preference?', 'select', 
    '["Vegetarian", "Non-Vegetarian", "Vegan", "Mixed"]'::jsonb, 
-   NULL, NULL, 8, false);
+    NULL, NULL, 8, false),
+
+    (student_survey_id, 'How many notebooks do you use in a semester?', 'number',
+    NULL, NULL, NULL, 9, false),
+
+    (student_survey_id, 'About how many pages of notes do you write per week?', 'number',
+    NULL, NULL, NULL, 10, false),
+
+    (student_survey_id, 'Do you reuse old notebooks for practice?', 'select',
+    '["Never", "Sometimes", "Often", "Always"]'::jsonb,
+    NULL, NULL, 11, false);
 END $$;
 
 -- Faculty Survey Template

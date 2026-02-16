@@ -128,6 +128,144 @@ export default function AdminSurveyManagement() {
     setQuestions(questions.filter((_, i) => i !== index));
   };
 
+  const addDefaultQuestions = () => {
+    const defaultQuestions: QuestionBuilder[] = [
+      // Energy & Electricity
+      {
+        question_text: 'How many hours per day do you use air conditioning or room heater?',
+        question_type: 'number',
+        is_required: true,
+        emission_category: 'electricity',
+        conversion_factor: '2.5',
+        options: ''
+      },
+      {
+        question_text: 'How many hours per day do you use fans?',
+        question_type: 'number',
+        is_required: true,
+        emission_category: 'electricity',
+        conversion_factor: '0.25',
+        options: ''
+      },
+      {
+        question_text: 'How many lights/bulbs do you typically keep on at night in your room/home?',
+        question_type: 'number',
+        is_required: true,
+        emission_category: 'electricity',
+        conversion_factor: '0.08',
+        options: ''
+      },
+      {
+        question_text: 'How many hours per day do you charge your phone, laptop, and other devices (total)?',
+        question_type: 'number',
+        is_required: true,
+        emission_category: 'electricity',
+        conversion_factor: '0.15',
+        options: ''
+      },
+      {
+        question_text: 'Do you use a geyser/water heater for bathing?',
+        question_type: 'radio',
+        is_required: true,
+        emission_category: 'electricity',
+        conversion_factor: '2.0',
+        options: 'Yes daily,Yes occasionally,No'
+      },
+      
+      // Transportation
+      {
+        question_text: 'What is your primary mode of transportation to college/work?',
+        question_type: 'select',
+        is_required: true,
+        emission_category: 'travel',
+        conversion_factor: '0',
+        options: 'Walking,Bicycle,College Bus,City Bus,Metro/Train,Two-wheeler (petrol),Car,Auto-rickshaw'
+      },
+      {
+        question_text: 'How many kilometers do you travel per day (one-way distance to college/work)?',
+        question_type: 'number',
+        is_required: true,
+        emission_category: 'travel',
+        conversion_factor: '0.24',
+        options: ''
+      },
+      {
+        question_text: 'Do you use elevator/lift instead of stairs?',
+        question_type: 'radio',
+        is_required: true,
+        emission_category: 'electricity',
+        conversion_factor: '0.1',
+        options: 'Always,Sometimes,Rarely,Never'
+      },
+      
+      // Water Usage
+      {
+        question_text: 'How many minutes do you spend in the shower daily?',
+        question_type: 'number',
+        is_required: true,
+        emission_category: 'water',
+        conversion_factor: '0.015',
+        options: ''
+      },
+      {
+        question_text: 'How many bottles (1 liter) of water do you drink per day?',
+        question_type: 'number',
+        is_required: true,
+        emission_category: 'water',
+        conversion_factor: '0.0003',
+        options: ''
+      },
+      
+      // Waste & Consumption
+      {
+        question_text: 'How many plastic bottles/packets do you use per day?',
+        question_type: 'number',
+        is_required: true,
+        emission_category: 'plastic_waste',
+        conversion_factor: '1.2',
+        options: ''
+      },
+      {
+        question_text: 'How many printed pages/sheets of paper do you use per day?',
+        question_type: 'number',
+        is_required: false,
+        emission_category: 'paper',
+        conversion_factor: '0.005',
+        options: ''
+      },
+      {
+        question_text: 'Do you waste food during meals?',
+        question_type: 'radio',
+        is_required: true,
+        emission_category: 'organic_waste',
+        conversion_factor: '0.3',
+        options: 'Never,Rarely,Sometimes,Often'
+      },
+      {
+        question_text: 'How many meals do you cook at home per day (using gas/electricity)?',
+        question_type: 'number',
+        is_required: true,
+        emission_category: 'lpg',
+        conversion_factor: '0.8',
+        options: ''
+      },
+      {
+        question_text: 'Do you carry a reusable bag while shopping or use plastic bags?',
+        question_type: 'radio',
+        is_required: true,
+        emission_category: 'plastic_waste',
+        conversion_factor: '0',
+        options: 'Always reusable bag,Sometimes reusable,Usually plastic bags'
+      }
+    ];
+    
+    setQuestions(defaultQuestions);
+    toast({
+      title: 'Default Questions Added',
+      description: `${defaultQuestions.length} daily carbon footprint questions have been added to your survey`
+    });
+  };
+
   const handleCreateSurvey = async () => {
     if (!surveyForm.title.trim()) {
       toast({
@@ -352,134 +490,67 @@ export default function AdminSurveyManagement() {
 
               {/* Question Builder */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Questions ({questions.length})</h3>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">Questions ({questions.length})</h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addDefaultQuestions}
+                    disabled={questions.length > 0}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Default Carbon Tracking Questions
+                  </Button>
+                </div>
+
+                {questions.length === 0 && (
+                  <Alert>
+                    <AlertDescription>
+                      Click "Add Default Carbon Tracking Questions" to include pre-configured questions with proper conversion factors for calculating carbon emissions.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 {/* Added Questions List */}
                 {questions.length > 0 && (
                   <div className="space-y-2 mb-4">
-                    {questions.map((q, index) => (
-                      <Card key={index}>
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="font-medium">Q{index + 1}.</span>
-                                <span>{q.question_text}</span>
-                                {q.is_required && <Badge variant="outline">Required</Badge>}
-                              </div>
-                              <div className="text-sm text-muted-foreground space-y-1">
-                                <p>Type: {q.question_type}</p>
-                                {q.options && <p>Options: {q.options}</p>}
-                                {q.emission_category && <p>Category: {q.emission_category}</p>}
-                                {q.conversion_factor && <p>Factor: {q.conversion_factor}</p>}
+                    <p className="text-sm text-muted-foreground">
+                      {questions.length} questions added with pre-configured emission factors
+                    </p>
+                    <ScrollArea className="h-[300px] border rounded-md p-4">
+                      {questions.map((q, index) => (
+                        <Card key={index} className="mb-2">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="font-medium">Q{index + 1}.</span>
+                                  <span>{q.question_text}</span>
+                                  {q.is_required && <Badge variant="outline">Required</Badge>}
+                                </div>
+                                <div className="text-sm text-muted-foreground space-y-1">
+                                  <p>Type: {q.question_type}</p>
+                                  {q.options && <p>Options: {q.options}</p>}
+                                  {q.emission_category && <p>Category: {q.emission_category}</p>}
+                                  {q.conversion_factor && <p>Conversion Factor: {q.conversion_factor} kg CO₂</p>}
+                                </div>
                               </div>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeQuestion(index)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </ScrollArea>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setQuestions([])}
+                      className="w-full"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Clear All Questions
+                    </Button>
                   </div>
                 )}
-
-                {/* New Question Form */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Add Question</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label>Question Text*</Label>
-                      <Input
-                        value={currentQuestion.question_text}
-                        onChange={(e) => setCurrentQuestion({ ...currentQuestion, question_text: e.target.value })}
-                        placeholder="Enter your question"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Question Type</Label>
-                        <Select
-                          value={currentQuestion.question_type}
-                          onValueChange={(value: any) => setCurrentQuestion({ ...currentQuestion, question_type: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {QUESTION_TYPES.map(type => (
-                              <SelectItem key={type.value} value={type.value}>
-                                {type.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label>Emission Category</Label>
-                        <Select
-                          value={currentQuestion.emission_category}
-                          onValueChange={(value) => setCurrentQuestion({ ...currentQuestion, emission_category: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">None</SelectItem>
-                            {EMISSION_CATEGORIES.map(cat => (
-                              <SelectItem key={cat} value={cat}>
-                                {cat.replace('_', ' ')}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {['select', 'radio', 'checkbox'].includes(currentQuestion.question_type) && (
-                      <div>
-                        <Label>Options (comma-separated)</Label>
-                        <Input
-                          value={currentQuestion.options}
-                          onChange={(e) => setCurrentQuestion({ ...currentQuestion, options: e.target.value })}
-                          placeholder="Option 1, Option 2, Option 3"
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <Label>Conversion Factor</Label>
-                      <Input
-                        type="number"
-                        step="0.001"
-                        value={currentQuestion.conversion_factor}
-                        onChange={(e) => setCurrentQuestion({ ...currentQuestion, conversion_factor: e.target.value })}
-                        placeholder="e.g., 0.82 for electricity kWh to kg CO2"
-                      />
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={currentQuestion.is_required}
-                        onCheckedChange={(checked) => setCurrentQuestion({ ...currentQuestion, is_required: checked })}
-                      />
-                      <Label>Required Question</Label>
-                    </div>
-
-                    <Button onClick={addQuestion} variant="outline" className="w-full">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Question
-                    </Button>
-                  </CardContent>
-                </Card>
               </div>
 
               <div className="flex justify-end gap-2 pt-4">

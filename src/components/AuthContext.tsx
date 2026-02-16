@@ -16,20 +16,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { data: dbUser } = useCurrentUser();
+  const [authLoading, setAuthLoading] = useState(true);
+  const { data: dbUser, isLoading: dbUserLoading } = useCurrentUser();
 
   useEffect(() => {
     // Check active session
     auth.getSession().then((session) => {
       setUser(session?.user ?? null);
-      setLoading(false);
+      setAuthLoading(false);
+    }).catch((error) => {
+      console.error('Session check error:', error);
+      setAuthLoading(false);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      setLoading(false);
+      setAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -51,6 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const userRole = dbUser?.role || null;
+  const loading = authLoading || (user ? dbUserLoading : false);
 
   return (
     <AuthContext.Provider value={{ user, userRole, loading, signIn, signUp, signOut }}>
