@@ -34,7 +34,9 @@ const FacultySurvey = () => {
   const { mutate: submitResponse, isPending: isSubmitting } = useSubmitSurveyResponse();
 
   const handleResponseChange = (questionId: string, value: any) => {
-    setResponses(prev => ({ ...prev, [questionId]: value }));
+    // Convert empty strings to null for optional numeric fields
+    const processedValue = value === '' ? null : value;
+    setResponses(prev => ({ ...prev, [questionId]: processedValue }));
   };
 
   const handleCheckboxChange = (questionId: string, option: string, checked: boolean) => {
@@ -71,7 +73,7 @@ const FacultySurvey = () => {
     const requiredQuestions = questions?.filter(q => q.is_required) || [];
     const missingRequired = requiredQuestions.find(q => {
       const response = responses[q.id];
-      return !response || (Array.isArray(response) && response.length === 0) || response === '';
+      return response === undefined || response === null || (Array.isArray(response) && response.length === 0) || response === '';
     });
 
     if (missingRequired) {
@@ -143,9 +145,10 @@ const FacultySurvey = () => {
           <Input
             type="number"
             step="0.01"
-            value={value}
+            min="0"
+            value={value || ''}
             onChange={(e) => handleResponseChange(questionId, e.target.value)}
-            placeholder="Enter a number"
+            placeholder={question.is_required ? "Enter a number" : "Enter a number (or leave blank if not applicable)"}
           />
         );
 
@@ -349,9 +352,15 @@ const FacultySurvey = () => {
                         <Label className="text-base">
                           {index + 1}. {question.question_text}
                           {question.is_required && <span className="text-red-500 ml-1">*</span>}
+                          {!question.is_required && <span className="text-gray-400 ml-1 text-xs">(Optional)</span>}
                         </Label>
                         {question.help_text && (
                           <p className="text-sm text-muted-foreground">{question.help_text}</p>
+                        )}
+                        {!question.is_required && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                            💡 Leave blank if this question does not apply to you
+                          </p>
                         )}
                         <div className="pt-2">
                           {renderQuestion(question)}
