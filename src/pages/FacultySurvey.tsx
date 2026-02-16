@@ -15,14 +15,14 @@ import { Leaf, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/AuthContext";
 import { useSurveysByAudience, useSurveyQuestions, useUserSurveyResponse, useSubmitSurveyResponse } from "@/hooks/useSurveys";
 
-const StudentSurvey = () => {
+const FacultySurvey = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [selectedSurveyId, setSelectedSurveyId] = useState<string>("");
   const [responses, setResponses] = useState<Record<string, any>>({});
 
-  // Fetch surveys for students
-  const { data: surveys, isLoading: surveysLoading, error: surveysError } = useSurveysByAudience('student');
+  // Fetch surveys for faculty
+  const { data: surveys, isLoading: surveysLoading, error: surveysError } = useSurveysByAudience('faculty');
   
   // Fetch questions for selected survey
   const { data: questions, isLoading: questionsLoading } = useSurveyQuestions(selectedSurveyId);
@@ -241,7 +241,7 @@ const StudentSurvey = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
             <Leaf className="h-8 w-8 text-green-600" />
-            Student Surveys
+            Faculty Surveys
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Participate in campus sustainability surveys
@@ -262,7 +262,7 @@ const StudentSurvey = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
           <Leaf className="h-8 w-8 text-green-600" />
-          Student Surveys
+          Faculty Surveys
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
           Participate in campus sustainability surveys
@@ -404,5 +404,4 @@ const StudentSurvey = () => {
   );
 };
 
-export default StudentSurvey;
-
+export default FacultySurvey;

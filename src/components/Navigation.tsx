@@ -1,16 +1,42 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Leaf, LayoutDashboard, FileInput, Users, History } from "lucide-react";
+import { Leaf, LayoutDashboard, FileInput, Users, History, LogOut, ClipboardList, GraduationCap } from "lucide-react";
+import { useAuth } from "./AuthContext";
+import { Button } from "./ui/button";
 
 const Navigation = () => {
   const location = useLocation();
+  const { signOut, userRole } = useAuth();
 
-  const navItems = [
-    { path: "/", icon: LayoutDashboard, label: "Dashboard" },
-    { path: "/admin", icon: FileInput, label: "Admin Input" },
-    { path: "/survey", icon: Users, label: "Student Survey" },
-    { path: "/history", icon: History, label: "History" },
-  ];
+  // Define navigation items based on role
+  const getNavItems = () => {
+    const baseItems = [
+      { path: "/", icon: LayoutDashboard, label: "Dashboard" },
+      { path: "/history", icon: History, label: "History" },
+    ];
+
+    if (userRole === 'admin') {
+      return [
+        ...baseItems,
+        { path: "/admin/input", icon: FileInput, label: "Data Entry" },
+        { path: "/admin/surveys", icon: ClipboardList, label: "Survey Management" },
+      ];
+    } else if (userRole === 'student') {
+      return [
+        ...baseItems,
+        { path: "/student-survey", icon: Users, label: "Student Survey" },
+      ];
+    } else if (userRole === 'faculty') {
+      return [
+        ...baseItems,
+        { path: "/faculty-survey", icon: GraduationCap, label: "Faculty Survey" },
+      ];
+    }
+
+    return baseItems;
+  };
+
+  const navItems = getNavItems();
 
   return (
     <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-gray-900/95 dark:supports-[backdrop-filter]:bg-gray-900/60">
@@ -53,6 +79,15 @@ const Navigation = () => {
                 </Link>
               );
             })}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => signOut()}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden md:inline">Sign Out</span>
+            </Button>
           </nav>
         </div>
       </div>

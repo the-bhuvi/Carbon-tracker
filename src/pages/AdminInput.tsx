@@ -6,138 +6,108 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Lightbulb, Droplet, Trash2, Fuel, Calculator } from "lucide-react";
+import { Lightbulb, Droplet, Trash2, Fuel, Calculator, Car } from "lucide-react";
+import { useCreateCarbonSubmission, useDepartments, useCurrentUser } from "@/hooks/useSupabase";
 
-interface AdminInputData {
-  // Section A: Indirect inputs
-  classrooms: string;
-  buildings: string;
-  hostels: string;
-  canteens: string;
-  foodType: string;
-  
-  // Section B: Direct inputs
+interface CarbonInputData {
   electricity: string;
+  diesel: string;
+  petrol: string;
+  lpg: string;
+  png: string;
+  travel: string;
   water: string;
-  waste: string;
-  fuel: string;
+  paper: string;
+  ewaste: string;
+  departmentId: string;
 }
 
 const AdminInput = () => {
   const { toast } = useToast();
-  const [formData, setFormData] = useState<AdminInputData>({
-    classrooms: "",
-    buildings: "",
-    hostels: "",
-    canteens: "",
-    foodType: "",
+  const { data: user } = useCurrentUser();
+  const { data: departments } = useDepartments();
+  const { mutate: createSubmission, isPending } = useCreateCarbonSubmission();
+  
+  const [formData, setFormData] = useState<CarbonInputData>({
     electricity: "",
+    diesel: "",
+    petrol: "",
+    lpg: "",
+    png: "",
+    travel: "",
     water: "",
-    waste: "",
-    fuel: ""
+    paper: "",
+    ewaste: "",
+    departmentId: ""
   });
 
-  const updateField = (field: keyof AdminInputData, value: string) => {
+  const updateField = (field: keyof CarbonInputData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const calculateCarbonFootprint = () => {
+  const handleSubmit = async () => {
     // Validate required fields
-    const requiredFields = Object.entries(formData).filter(([key, value]) => !value);
-    if (requiredFields.length > 0) {
+    if (!formData.departmentId) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all fields before calculating.",
+        description: "Please select a department.",
         variant: "destructive"
       });
       return;
     }
 
-    // Emission factors (kg CO2e)
-    const emissionFactors = {
-      classroom: 500,      // per classroom per year
-      building: 2000,      // per building per year
-      hostel: 3000,        // per hostel per year
-      canteen: 1500,       // per canteen per year
-      foodVeg: 0.5,        // multiplier for vegetarian
-      foodMixed: 1.0,      // multiplier for mixed
-      foodNonVeg: 1.5,     // multiplier for non-veg
-      electricity: 0.82,   // per kWh
-      water: 0.298,        // per 1000 litres
-      waste: 0.5,          // per kg
-      fuel: 2.68           // per litre
-    };
-
-    // Calculate indirect emissions
-    const classroomEmissions = parseInt(formData.classrooms) * emissionFactors.classroom;
-    const buildingEmissions = parseInt(formData.buildings) * emissionFactors.building;
-    const hostelEmissions = parseInt(formData.hostels) * emissionFactors.hostel;
-    const canteenEmissions = parseInt(formData.canteens) * emissionFactors.canteen;
-    
-    const foodMultiplier = formData.foodType === "Vegetarian" ? emissionFactors.foodVeg :
-                          formData.foodType === "Non-vegetarian" ? emissionFactors.foodNonVeg :
-                          emissionFactors.foodMixed;
-    const foodEmissions = canteenEmissions * foodMultiplier;
-
-    // Calculate direct emissions
-    const electricityEmissions = parseFloat(formData.electricity) * emissionFactors.electricity;
-    const waterEmissions = (parseFloat(formData.water) / 1000) * emissionFactors.water;
-    const wasteEmissions = parseFloat(formData.waste) * emissionFactors.waste;
-    const fuelEmissions = parseFloat(formData.fuel) * emissionFactors.fuel;
-
-    const totalEmissions = classroomEmissions + buildingEmissions + hostelEmissions + 
-                          foodEmissions + electricityEmissions + waterEmissions + 
-                          wasteEmissions + fuelEmissions;
-
-    // Save to localStorage (prepare for Firebase later)
-    const currentYear = new Date().getFullYear();
-    const academicYear = `${currentYear}-${currentYear + 1}`;
-    
-    const footprintData = {
-      academicYear,
-      timestamp: new Date().toISOString(),
-      inputs: formData,
-      emissions: {
-        electricity: electricityEmissions,
-        water: waterEmissions,
-        waste: wasteEmissions,
-        fuel: fuelEmissions,
-        food: foodEmissions,
-        infrastructure: classroomEmissions + buildingEmissions + hostelEmissions,
-        total: totalEmissions
-      }
-    };
-
-    // Get existing data
-    const existingData = JSON.parse(localStorage.getItem("campusFootprintData") || "[]");
-    
-    // Check if data for current year exists, if so update it
-    const yearIndex = existingData.findIndex((d: any) => d.academicYear === academicYear);
-    if (yearIndex >= 0) {
-      existingData[yearIndex] = footprintData;
-    } else {
-      existingData.push(footprintData);
+    if (!user?.id) {
+      toast({
+        title: "Authentication Error",
+        description: "Please log in to submit data.",
+        variant: "destructive"
+      });
+      return;
     }
-    
-    localStorage.setItem("campusFootprintData", JSON.stringify(existingData));
-    localStorage.setItem("latestFootprint", JSON.stringify(footprintData));
 
-    toast({
-      title: "Success!",
-      description: `Carbon footprint calculated: ${(totalEmissions / 1000).toFixed(2)} tons CO₂e for ${academicYear}`,
-    });
+    // Prepare submission data
+    const submissionData = {
+      user_id: user.id,
+      department_id: formData.departmentId,
+      electricity_kwh: parseFloat(formData.electricity) || 0,
+      diesel_liters: parseFloat(formData.diesel) || 0,
+      petrol_liters: parseFloat(formData.petrol) || 0,
+      lpg_kg: parseFloat(formData.lpg) || 0,
+      png_m3: parseFloat(formData.png) || 0,
+      travel_km: parseFloat(formData.travel) || 0,
+      water_liters: parseFloat(formData.water) || 0,
+      paper_kg: parseFloat(formData.paper) || 0,
+      ewaste_kg: parseFloat(formData.ewaste) || 0
+    };
 
-    // Reset form
-    setFormData({
-      classrooms: "",
-      buildings: "",
-      hostels: "",
-      canteens: "",
-      foodType: "",
-      electricity: "",
-      water: "",
-      waste: "",
-      fuel: ""
+    createSubmission(submissionData, {
+      onSuccess: (data) => {
+        toast({
+          title: "Success!",
+          description: `Carbon footprint recorded: ${((data.total_carbon || 0) / 1000).toFixed(2)} tons CO₂e`,
+        });
+
+        // Reset form
+        setFormData({
+          electricity: "",
+          diesel: "",
+          petrol: "",
+          lpg: "",
+          png: "",
+          travel: "",
+          water: "",
+          paper: "",
+          ewaste: "",
+          departmentId: formData.departmentId // Keep department selected
+        });
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Submission Failed",
+          description: error.message || "Failed to save carbon footprint data",
+          variant: "destructive"
+        });
+      }
     });
   };
 
@@ -145,176 +115,195 @@ const AdminInput = () => {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Admin Input
+          Carbon Emission Input
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Enter campus data to calculate carbon footprint
+          Enter consumption data to track carbon footprint
         </p>
       </div>
 
       <div className="space-y-6">
-        {/* Section A: Indirect / Assumption-based inputs */}
-        <Card className="border-green-200 dark:border-green-800">
+        {/* Department Selection */}
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-green-600" />
-              Section A: Indirect / Assumption-based Inputs
-            </CardTitle>
-            <CardDescription>
-              Infrastructure and operational data
-            </CardDescription>
+            <CardTitle>Department</CardTitle>
+            <CardDescription>Select the department for this submission</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-              <AlertDescription>
-                <span className="font-semibold">Note:</span> Values are estimated using standard emission factors
-              </AlertDescription>
-            </Alert>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="classrooms">Number of Classrooms</Label>
-                <Input
-                  id="classrooms"
-                  type="number"
-                  placeholder="e.g., 50"
-                  value={formData.classrooms}
-                  onChange={(e) => updateField("classrooms", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="buildings">Number of Buildings</Label>
-                <Input
-                  id="buildings"
-                  type="number"
-                  placeholder="e.g., 10"
-                  value={formData.buildings}
-                  onChange={(e) => updateField("buildings", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="hostels">Number of Hostels</Label>
-                <Input
-                  id="hostels"
-                  type="number"
-                  placeholder="e.g., 5"
-                  value={formData.hostels}
-                  onChange={(e) => updateField("hostels", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="canteens">Number of Canteens</Label>
-                <Input
-                  id="canteens"
-                  type="number"
-                  placeholder="e.g., 3"
-                  value={formData.canteens}
-                  onChange={(e) => updateField("canteens", e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="foodType">Food Supply Type</Label>
-              <Select
-                value={formData.foodType}
-                onValueChange={(value) => updateField("foodType", value)}
-              >
-                <SelectTrigger id="foodType">
-                  <SelectValue placeholder="Select food type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Vegetarian">Vegetarian</SelectItem>
-                  <SelectItem value="Mixed">Mixed</SelectItem>
-                  <SelectItem value="Non-vegetarian">Non-vegetarian</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <CardContent>
+            <Select
+              value={formData.departmentId}
+              onValueChange={(value) => updateField("departmentId", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select department" />
+              </SelectTrigger>
+              <SelectContent>
+                {departments?.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardContent>
         </Card>
 
-        {/* Section B: Direct inputs */}
-        <Card className="border-blue-200 dark:border-blue-800">
+        {/* Energy Consumption */}
+        <Card className="border-yellow-200 dark:border-yellow-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Calculator className="h-5 w-5 text-blue-600" />
-              Section B: Direct Inputs
+              <Lightbulb className="h-5 w-5 text-yellow-600" />
+              Energy Consumption
             </CardTitle>
-            <CardDescription>
-              Measured consumption data
-            </CardDescription>
+            <CardDescription>Electricity and fuel usage</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="electricity" className="flex items-center gap-2">
-                  <Lightbulb className="h-4 w-4" />
-                  Electricity Consumption (kWh)
-                </Label>
+                <Label htmlFor="electricity">Electricity (kWh)</Label>
                 <Input
                   id="electricity"
                   type="number"
-                  placeholder="e.g., 50000"
+                  step="0.01"
+                  placeholder="e.g., 450"
                   value={formData.electricity}
                   onChange={(e) => updateField("electricity", e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="water" className="flex items-center gap-2">
-                  <Droplet className="h-4 w-4" />
-                  Water Usage (litres)
-                </Label>
+                <Label htmlFor="diesel">Diesel (liters)</Label>
                 <Input
-                  id="water"
+                  id="diesel"
                   type="number"
-                  placeholder="e.g., 100000"
-                  value={formData.water}
-                  onChange={(e) => updateField("water", e.target.value)}
+                  step="0.01"
+                  placeholder="e.g., 20"
+                  value={formData.diesel}
+                  onChange={(e) => updateField("diesel", e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="waste" className="flex items-center gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  Waste Generated (kg)
-                </Label>
+                <Label htmlFor="petrol">Petrol (liters)</Label>
                 <Input
-                  id="waste"
+                  id="petrol"
                   type="number"
-                  placeholder="e.g., 5000"
-                  value={formData.waste}
-                  onChange={(e) => updateField("waste", e.target.value)}
+                  step="0.01"
+                  placeholder="e.g., 30"
+                  value={formData.petrol}
+                  onChange={(e) => updateField("petrol", e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="fuel" className="flex items-center gap-2">
-                  <Fuel className="h-4 w-4" />
-                  Fuel Consumption (litres)
-                </Label>
+                <Label htmlFor="lpg">LPG (kg)</Label>
                 <Input
-                  id="fuel"
+                  id="lpg"
                   type="number"
-                  placeholder="e.g., 2000"
-                  value={formData.fuel}
-                  onChange={(e) => updateField("fuel", e.target.value)}
+                  step="0.01"
+                  placeholder="e.g., 15"
+                  value={formData.lpg}
+                  onChange={(e) => updateField("lpg", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="png">PNG (m³)</Label>
+                <Input
+                  id="png"
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g., 25"
+                  value={formData.png}
+                  onChange={(e) => updateField("png", e.target.value)}
                 />
               </div>
             </div>
           </CardContent>
         </Card>
 
+        {/* Transportation & Resources */}
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Car className="h-5 w-5 text-blue-600" />
+              Transportation & Resources
+            </CardTitle>
+            <CardDescription>Travel and resource consumption</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="travel">Travel Distance (km)</Label>
+                <Input
+                  id="travel"
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g., 80"
+                  value={formData.travel}
+                  onChange={(e) => updateField("travel", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="water" className="flex items-center gap-2">
+                  <Droplet className="h-4 w-4" />
+                  Water (liters)
+                </Label>
+                <Input
+                  id="water"
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g., 8000"
+                  value={formData.water}
+                  onChange={(e) => updateField("water", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="paper">Paper (kg)</Label>
+                <Input
+                  id="paper"
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g., 12"
+                  value={formData.paper}
+                  onChange={(e) => updateField("paper", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ewaste" className="flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  E-Waste (kg)
+                </Label>
+                <Input
+                  id="ewaste"
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g., 5"
+                  value={formData.ewaste}
+                  onChange={(e) => updateField("ewaste", e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Alert>
+          <AlertDescription>
+            <span className="font-semibold">Note:</span> All calculations are automatically performed using standard emission factors stored in the database.
+          </AlertDescription>
+        </Alert>
+
         <Button 
-          onClick={calculateCarbonFootprint}
+          onClick={handleSubmit}
           className="w-full bg-green-600 hover:bg-green-700 text-white"
           size="lg"
+          disabled={isPending}
         >
           <Calculator className="mr-2 h-5 w-5" />
-          Calculate Carbon Footprint
+          {isPending ? 'Submitting...' : 'Submit Carbon Data'}
         </Button>
       </div>
     </div>

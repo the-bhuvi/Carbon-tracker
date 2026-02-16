@@ -1,298 +1,229 @@
-import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { Calendar, TrendingDown, TrendingUp, History as HistoryIcon, AlertCircle } from "lucide-react";
-
-interface YearData {
-  academicYear: string;
-  timestamp: string;
-  emissions: {
-    electricity: number;
-    water: number;
-    waste: number;
-    fuel: number;
-    food: number;
-    infrastructure: number;
-    total: number;
-  };
-}
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Calendar, History as HistoryIcon, AlertCircle, Leaf } from "lucide-react";
+import { useCarbonSubmissions, useCurrentUser } from "@/hooks/useSupabase";
 
 const History = () => {
-  const [yearlyData, setYearlyData] = useState<YearData[]>([]);
-  const [hasData, setHasData] = useState(false);
+  const { data: user } = useCurrentUser();
+  const { data: submissions, isLoading } = useCarbonSubmissions(user?.id);
 
-  useEffect(() => {
-    // Load historical data from localStorage
-    const storedData = localStorage.getItem("campusFootprintData");
-    if (storedData) {
-      const data = JSON.parse(storedData);
-      setYearlyData(data.sort((a: YearData, b: YearData) => 
-        a.academicYear.localeCompare(b.academicYear)
-      ));
-      setHasData(data.length > 0);
-    } else {
-      // Sample historical data for demonstration
-      const sampleData: YearData[] = [
-        {
-          academicYear: "2023-2024",
-          timestamp: "2024-03-15T10:00:00Z",
-          emissions: {
-            electricity: 45000,
-            water: 32.5,
-            waste: 2800,
-            fuel: 6000,
-            food: 5000,
-            infrastructure: 60000,
-            total: 118832.5
-          }
-        },
-        {
-          academicYear: "2024-2025",
-          timestamp: "2025-03-15T10:00:00Z",
-          emissions: {
-            electricity: 43000,
-            water: 30.2,
-            waste: 2600,
-            fuel: 5500,
-            food: 4700,
-            infrastructure: 57000,
-            total: 112830.2
-          }
-        },
-        {
-          academicYear: "2025-2026",
-          timestamp: "2026-02-10T10:00:00Z",
-          emissions: {
-            electricity: 41000,
-            water: 29.8,
-            waste: 2500,
-            fuel: 5360,
-            food: 4500,
-            infrastructure: 55000,
-            total: 108389.8
-          }
-        }
-      ];
-      setYearlyData(sampleData);
-      setHasData(true);
-    }
-  }, []);
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Leaf className="h-12 w-12 text-green-600 animate-pulse mx-auto mb-4" />
+            <p className="text-gray-600">Loading your submissions...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const calculatePercentageChange = (current: number, previous: number): number => {
-    if (previous === 0) return 0;
-    return ((current - previous) / previous) * 100;
-  };
-
-  const chartData = yearlyData.map(data => ({
-    year: data.academicYear,
-    total: (data.emissions.total / 1000).toFixed(2),
-    electricity: (data.emissions.electricity / 1000).toFixed(2),
-    fuel: (data.emissions.fuel / 1000).toFixed(2),
-    food: (data.emissions.food / 1000).toFixed(2)
-  }));
-
-  if (!hasData) {
+  if (!submissions || submissions.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Historical Data
+            Submission History
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Year-over-year carbon footprint comparison
+            Your carbon emission submissions
           </p>
         </div>
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            No historical data available yet. Data will appear here after you submit carbon footprint calculations.
+            No submissions yet. Start tracking your carbon footprint by submitting data in the Admin Input or Student Survey pages.
           </AlertDescription>
         </Alert>
       </div>
     );
   }
 
+  const getScoreBadgeVariant = (score: string) => {
+    switch (score) {
+      case 'Green': return 'default';
+      case 'Moderate': return 'secondary';
+      case 'High': return 'destructive';
+      default: return 'outline';
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Historical Data
+          Submission History
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Year-over-year carbon footprint comparison
+          Your carbon emission submissions
         </p>
       </div>
 
-      {/* Trend Chart */}
-      <Card className="mb-6">
+      {/* Summary Stats */}
+      <div className="grid gap-4 sm:grid-cols-3 mb-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              Total Submissions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-blue-600">
+              {submissions.length}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              Total Carbon Tracked
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-green-600">
+              {(submissions.reduce((sum, s) => sum + (s.total_carbon || 0), 0) / 1000).toFixed(2)}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">tons CO₂e</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              Average per Submission
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-purple-600">
+              {(submissions.reduce((sum, s) => sum + (s.total_carbon || 0), 0) / submissions.length).toFixed(2)}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">kg CO₂e</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Submissions Table */}
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <HistoryIcon className="h-5 w-5 text-blue-600" />
-            Emissions Trend Over Years
+            All Submissions
           </CardTitle>
           <CardDescription>
-            Total carbon footprint by academic year (tons CO₂e)
+            Detailed history of your carbon footprint submissions
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="total" stroke="#8b5cf6" strokeWidth={2} name="Total Emissions" />
-              <Line type="monotone" dataKey="electricity" stroke="#facc15" strokeWidth={2} name="Electricity" />
-              <Line type="monotone" dataKey="fuel" stroke="#ef4444" strokeWidth={2} name="Fuel" />
-              <Line type="monotone" dataKey="food" stroke="#f97316" strokeWidth={2} name="Food" />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead className="text-right">Electricity (kWh)</TableHead>
+                  <TableHead className="text-right">Fuel (L)</TableHead>
+                  <TableHead className="text-right">Travel (km)</TableHead>
+                  <TableHead className="text-right">Total CO₂e (kg)</TableHead>
+                  <TableHead className="text-right">Trees</TableHead>
+                  <TableHead className="text-right">Score</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {submissions.map((submission) => (
+                  <TableRow key={submission.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-gray-400" />
+                        {new Date(submission.submission_date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {submission.department?.name || 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-right">{submission.electricity_kwh || 0}</TableCell>
+                    <TableCell className="text-right">
+                      {((submission.diesel_liters || 0) + (submission.petrol_liters || 0)).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right">{submission.travel_km || 0}</TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {submission.total_carbon_kg?.toFixed(2) || 0}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {submission.trees_to_offset || 0} 🌳
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant={getScoreBadgeVariant(submission.carbon_score || '')}>
+                        {submission.carbon_score || 'N/A'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Year-wise Comparison Cards */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold mb-4">Academic Year Breakdown</h2>
-        
-        {yearlyData.map((yearData, index) => {
-          const previousYear = index > 0 ? yearlyData[index - 1] : null;
-          const percentageChange = previousYear 
-            ? calculatePercentageChange(yearData.emissions.total, previousYear.emissions.total)
-            : 0;
-          const isReduction = percentageChange < 0;
-
-          return (
-            <Card key={yearData.academicYear} className={isReduction && index > 0 ? "border-green-200 dark:border-green-800" : ""}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    {yearData.academicYear}
-                  </CardTitle>
-                  {index > 0 && (
-                    <Badge 
-                      variant={isReduction ? "default" : "destructive"}
-                      className={isReduction ? "bg-green-600" : ""}
-                    >
-                      {isReduction ? (
-                        <TrendingDown className="h-3 w-3 mr-1" />
-                      ) : (
-                        <TrendingUp className="h-3 w-3 mr-1" />
-                      )}
-                      {Math.abs(percentageChange).toFixed(1)}%
-                    </Badge>
-                  )}
-                </div>
-                <CardDescription>
-                  Recorded on {new Date(yearData.timestamp).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Total Emissions */}
-                  <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                    <span className="font-semibold">Total Emissions</span>
-                    <span className="text-2xl font-bold text-purple-600">
-                      {(yearData.emissions.total / 1000).toFixed(2)} tons CO₂e
-                    </span>
-                  </div>
-
-                  {/* Category Breakdown */}
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                      <span className="text-sm font-medium">Electricity</span>
-                      <span className="font-semibold">{(yearData.emissions.electricity / 1000).toFixed(2)} t</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                      <span className="text-sm font-medium">Water</span>
-                      <span className="font-semibold">{(yearData.emissions.water / 1000).toFixed(2)} t</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-                      <span className="text-sm font-medium">Waste</span>
-                      <span className="font-semibold">{(yearData.emissions.waste / 1000).toFixed(2)} t</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-950 rounded-lg">
-                      <span className="text-sm font-medium">Fuel</span>
-                      <span className="font-semibold">{(yearData.emissions.fuel / 1000).toFixed(2)} t</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950 rounded-lg">
-                      <span className="text-sm font-medium">Food</span>
-                      <span className="font-semibold">{(yearData.emissions.food / 1000).toFixed(2)} t</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-indigo-50 dark:bg-indigo-950 rounded-lg">
-                      <span className="text-sm font-medium">Infrastructure</span>
-                      <span className="font-semibold">{(yearData.emissions.infrastructure / 1000).toFixed(2)} t</span>
-                    </div>
-                  </div>
-
-                  {/* Comparison with previous year */}
-                  {previousYear && (
-                    <Alert className={isReduction ? "border-green-200 bg-green-50 dark:bg-green-950" : "border-orange-200 bg-orange-50 dark:bg-orange-950"}>
-                      <AlertDescription className="flex items-center gap-2">
-                        {isReduction ? (
-                          <>
-                            <TrendingDown className="h-4 w-4 text-green-600" />
-                            <span>
-                              <strong>Great progress!</strong> Reduced by <strong>{Math.abs(percentageChange).toFixed(1)}%</strong> compared to {previousYear.academicYear}
-                              {" "}({Math.abs((yearData.emissions.total - previousYear.emissions.total) / 1000).toFixed(2)} tons CO₂e reduction)
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <TrendingUp className="h-4 w-4 text-orange-600" />
-                            <span>
-                              <strong>Increased by {percentageChange.toFixed(1)}%</strong> compared to {previousYear.academicYear}
-                              {" "}(+{((yearData.emissions.total - previousYear.emissions.total) / 1000).toFixed(2)} tons CO₂e)
-                            </span>
-                          </>
-                        )}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+      {/* Detailed Cards View for Mobile */}
+      <div className="mt-6 space-y-4 md:hidden">
+        {submissions.map((submission) => (
+          <Card key={submission.id}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  {new Date(submission.submission_date).toLocaleDateString()}
+                </CardTitle>
+                <Badge variant={getScoreBadgeVariant(submission.carbon_score || '')}>
+                  {submission.carbon_score}
+                </Badge>
+              </div>
+              <CardDescription>{submission.department?.name}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total Carbon:</span>
+                <span className="font-semibold">{submission.total_carbon?.toFixed(2)} kg CO₂e</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Electricity:</span>
+                <span>{submission.electricity_kwh} kWh</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Fuel:</span>
+                <span>{((submission.diesel_liters || 0) + (submission.petrol_liters || 0)).toFixed(2)} L</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Travel:</span>
+                <span>{submission.travel_km} km</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Trees to Offset:</span>
+                <span>{submission.tree_equivalent} 🌳</span>
+              </div>
+              {submission.suggestions && submission.suggestions.length > 0 && (
+                <Alert className="mt-2">
+                  <AlertDescription className="text-xs">
+                    {submission.suggestions.join(', ')}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        ))}
       </div>
-
-      {/* Summary Statistics */}
-      {yearlyData.length > 1 && (
-        <Card className="mt-6 border-blue-200 dark:border-blue-800">
-          <CardHeader>
-            <CardTitle>Overall Progress Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="text-center p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Years Tracked</p>
-                <p className="text-3xl font-bold text-blue-600">{yearlyData.length}</p>
-              </div>
-              <div className="text-center p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">First Year Total</p>
-                <p className="text-3xl font-bold text-purple-600">
-                  {(yearlyData[0].emissions.total / 1000).toFixed(1)} t
-                </p>
-              </div>
-              <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Latest Year Total</p>
-                <p className="text-3xl font-bold text-green-600">
-                  {(yearlyData[yearlyData.length - 1].emissions.total / 1000).toFixed(1)} t
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
 
 export default History;
+

@@ -35,32 +35,32 @@ const Dashboard = () => {
   }
 
   // Calculate total emissions across all departments
-  const totalEmissions = departmentSummary.reduce((sum, dept) => sum + (dept.total_carbon || 0), 0);
-  const totalSubmissions = departmentSummary.reduce((sum, dept) => sum + (dept.total_submissions || 0), 0);
+  const totalEmissions = departmentSummary.reduce((sum, dept) => sum + (dept.total_carbon_kg || 0), 0);
+  const totalSubmissions = departmentSummary.reduce((sum, dept) => sum + (dept.submission_count || 0), 0);
 
   // Prepare data for charts
   const departmentData = departmentSummary.map(dept => ({
     name: dept.department_name,
-    emissions: (dept.total_carbon / 1000).toFixed(2),
-    submissions: dept.total_submissions,
+    emissions: (dept.total_carbon_kg / 1000).toFixed(2),
+    submissions: dept.submission_count,
     fill: getRandomColor()
   }));
 
   const pieData = departmentSummary.map((dept, index) => ({
     name: dept.department_name,
-    value: dept.total_carbon,
+    value: dept.total_carbon_kg,
     color: getColorByIndex(index)
   }));
 
   // Find department with highest emissions
   const highestDept = departmentSummary.reduce((prev, current) => 
-    (current.total_carbon > prev.total_carbon) ? current : prev
+    (current.total_carbon_kg > prev.total_carbon_kg) ? current : prev
   );
 
   // Prepare monthly trends data
   const trendsData = monthlyTrends?.map(trend => ({
-    month: new Date(trend.month_year + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-    emissions: (trend.total_carbon / 1000).toFixed(2),
+    month: new Date(trend.month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+    emissions: (trend.total_carbon_kg / 1000).toFixed(2),
     submissions: trend.submission_count
   })) || [];
 
@@ -221,10 +221,10 @@ const Dashboard = () => {
               <span>{highestDept.department_name}</span>
             </div>
             <Badge variant="destructive" className="text-sm">
-              {(highestDept.total_carbon / 1000).toFixed(2)} tons CO₂e
+              {(highestDept.total_carbon_kg / 1000).toFixed(2)} tons CO₂e
             </Badge>
             <Badge variant="outline" className="text-sm">
-              {highestDept.total_submissions} submissions
+              {highestDept.submission_count} submissions
             </Badge>
           </div>
           <Alert>
@@ -258,12 +258,12 @@ const Dashboard = () => {
                 {departmentSummary.map((dept, index) => (
                   <tr key={dept.department_id} className="border-b last:border-0">
                     <td className="py-3">{dept.department_name}</td>
-                    <td className="py-3 text-right font-medium">{(dept.total_carbon / 1000).toFixed(2)}</td>
-                    <td className="py-3 text-right">{dept.total_submissions}</td>
-                    <td className="py-3 text-right">{(dept.avg_carbon / 1000).toFixed(2)}</td>
+                    <td className="py-3 text-right font-medium">{(dept.total_carbon_kg / 1000).toFixed(2)}</td>
+                    <td className="py-3 text-right">{dept.submission_count}</td>
+                    <td className="py-3 text-right">{(dept.avg_carbon_kg / 1000).toFixed(2)}</td>
                     <td className="py-3 text-right">
-                      <Badge variant={dept.carbon_trend === 'Excellent' ? 'default' : dept.carbon_trend === 'Good' ? 'secondary' : 'destructive'}>
-                        {dept.carbon_trend}
+                      <Badge variant={dept.carbon_score === 'Green' ? 'default' : dept.carbon_score === 'Moderate' ? 'secondary' : 'destructive'}>
+                        {dept.carbon_score}
                       </Badge>
                     </td>
                   </tr>
