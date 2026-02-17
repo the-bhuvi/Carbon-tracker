@@ -18,6 +18,7 @@ import StudentSignup from "./pages/StudentSignup";
 import LandingPage from "./pages/LandingPage";
 import DebugUser from "./pages/DebugUser";
 import NotFound from "./pages/NotFound";
+import CarbonNeutralityPage from "./pages/CarbonNeutralityPage";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +103,7 @@ const App = () => (
                     <Navigation />
                     <Routes>
                       <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/carbon-neutrality" element={<CarbonNeutralityPage />} />
                       <Route path="/debug" element={<DebugUser />} />
                       <Route path="/student-survey" element={<StudentSurvey />} />
                       <Route path="/faculty-survey" element={<FacultySurvey />} />
