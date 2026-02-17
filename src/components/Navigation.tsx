@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Leaf, LayoutDashboard, FileInput, Users, History, LogOut, ClipboardList, GraduationCap } from "lucide-react";
+import { Leaf, LayoutDashboard, FileInput, Users, History, LogOut, ClipboardList, GraduationCap, TreePine } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { Button } from "./ui/button";
 
@@ -12,6 +12,7 @@ const Navigation = () => {
   const getNavItems = () => {
     const baseItems = [
       { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+      { path: "/carbon-neutrality", icon: TreePine, label: "Carbon Neutrality" },
       { path: "/history", icon: History, label: "History" },
     ];
 
