@@ -1,0 +1,166 @@
+# Dashboard Not Showing Your Data? Here's the Fix
+
+## The Problem
+You added data to the system but it's not appearing on the dashboard.
+
+## The Solution (30 seconds)
+1. **Go to this URL:** `http://localhost:5173/refresh-dashboard`
+2. **Click the button:** "Refresh Current Month"
+3. **Wait for:** Green "Success" message
+4. **Go back to:** Dashboard page
+5. **See your data!** ✓
+
+That's it! Your data should now be visible.
+
+---
+
+## Why Did This Happen?
+
+The dashboard displays data from "summary" tables in the database. Think of it like this:
+
+```
+Your Data (monthly_audit_data)
+    ↓
+    ↓ (needs refresh to calculate)
+    ↓
+Summary Tables (monthly_summary, academic_year_summary)
+    ↓
+    ↓ (dashboard reads from these)
+    ↓
+Dashboard Display
+```
+
+When you use the **Admin Input form**, this refresh happens automatically. When you add data directly to the database, it doesn't. That's why you don't see it.
+
+---
+
+## Three Ways to Fix It
+
+### ⭐ Way 1: Use the Refresh Dashboard Page (Easiest)
+- **URL:** `http://localhost:5173/refresh-dashboard`
+- **Time:** 30 seconds
+- **Steps:** Click 2 buttons, wait for success
+- **Best for:** Quick fixes
+
+### 📋 Way 2: Use the Admin Input Form (Best Practice)
+- **URL:** `http://localhost:5173/admin/input`
+- **Time:** 2 minutes
+- **Benefit:** Automatic refresh, no extra steps
+- **Best for:** Regular data entry going forward
+
+### 🗄️ Way 3: Run Database Commands (For Tech Users)
+- **Where:** Supabase console or pgAdmin
+- **Time:** 1 minute
+- **File:** `REFRESH_DASHBOARD_SQL.sql` (has ready-to-use commands)
+- **Best for:** Bulk operations
+
+---
+
+## Common Questions
+
+**Q: Will I need to do this every time?**
+A: Only if you add data directly to the database. If you use the Admin Input form, it's automatic.
+
+**Q: The page says "Refresh Current Year" - should I use that?**
+A: Only if you added data for multiple months. For single months, use "Refresh Current Month".
+
+**Q: I clicked refresh but still don't see data?**
+A: Make sure to:
+1. Check that the Dashboard year/month matches your data
+2. Refresh your browser page (press Ctrl+R)
+3. Make sure you're looking at the right view (Monthly vs Academic Year)
+
+**Q: Can I add data directly to the database?**
+A: Yes, but then you need to refresh. It's easier to use the Admin Input form.
+
+**Q: The /refresh-dashboard page won't load?**
+A: Make sure you're logged in as an admin, not as a student.
+
+---
+
+## Step by Step (With Pictures In Your Head)
+
+### Step 1: Navigate
+Open your browser and go to:
+```
+http://localhost:5173/refresh-dashboard
+```
+
+You'll see a page titled "Refresh Dashboard Data" with some buttons.
+
+### Step 2: Choose Your Refresh Type
+- Click **"Refresh Current Month"** if you only added data this month
+- Click **"Refresh Current Year"** if you added data across multiple months
+
+### Step 3: Wait for Success
+You'll see a green box appear that says:
+```
+✓ Successfully refreshed X month(s)...
+```
+
+### Step 4: Go Back to Dashboard
+Click the back button or navigate to:
+```
+http://localhost:5173/dashboard
+```
+
+### Step 5: See Your Data!
+Your data should now appear in the dashboard charts and tables. ✨
+
+---
+
+## If It Still Doesn't Work
+
+Try this checklist:
+
+- [ ] Did the refresh show a green "Success" message?
+- [ ] Did you go back to the dashboard?
+- [ ] Did you refresh the page (Ctrl+R)?
+- [ ] Are you looking at the right month/year?
+- [ ] Is your data actually in the system? (Check with your database admin)
+- [ ] Are you logged in as an admin?
+
+If all of these check out and it still doesn't work, contact your system admin.
+
+---
+
+## Remember for Next Time
+
+✅ **USE THIS:** The Admin Input form (`/admin/input`)
+- It's the regular way to enter data
+- Automatic refresh
+- No extra steps
+
+❌ **AVOID THIS:** Adding data directly to the database
+- Requires manual refresh afterward
+- Easy to forget
+
+---
+
+## Where to Find Help
+
+**Quick reference:** `QUICK_FIX_DASHBOARD_DATA.md`
+
+**Full guide:** `DASHBOARD_DATA_FIX_COMPLETE.md`
+
+**SQL commands:** `REFRESH_DASHBOARD_SQL.sql`
+
+**Everything:** This file you're reading!
+
+---
+
+## Summary
+
+1. Data added directly to database doesn't appear automatically
+2. Go to `/refresh-dashboard` 
+3. Click refresh button
+4. Your data appears on dashboard
+5. Next time use the Admin Input form instead
+
+**That's all you need to know! 🎉**
+
+---
+
+*Version: 1.0*
+*Last Updated: 2026-02-18*
+*For questions: Ask your system administrator*

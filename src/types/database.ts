@@ -100,6 +100,8 @@ export interface MonthlyAuditData {
   calculated_co2e_kg: number;
   unit: string | null;
   notes: string | null;
+  data_confidence?: 'Actual' | 'Estimated' | 'Not Available';
+  scope?: 'Scope1' | 'Scope2' | 'Scope3';
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -390,6 +392,66 @@ export interface EmissionIntensity {
   total_emissions_tonnes: number;
   total_students: number;
   emissions_per_student_kg: number;
+}
+
+// ============================================
+// ANALYTICAL FEATURES - NEW INTERFACES
+// ============================================
+
+export interface DataConfidenceLevel {
+  level: 'Actual' | 'Estimated' | 'Not Available';
+  indicator: string; // 🟢 | 🟡 | 🔴
+  color: string; // green | yellow | red
+}
+
+export interface TopContributor {
+  factor_name: string;
+  total_co2e_kg: number;
+  percentage_contribution: number;
+}
+
+export interface FactorPercentage {
+  factor_name: string;
+  total_co2e_kg: number;
+  percentage_contribution: number;
+}
+
+export interface EmissionIntensityMetrics {
+  total_emissions_kg: number;
+  total_students: number;
+  co2_per_student_kg: number;
+  scope1_kg: number;
+  scope2_kg: number;
+  scope3_kg: number;
+}
+
+export interface ScopeBreakdownMetric {
+  scope: 'Scope1' | 'Scope2' | 'Scope3';
+  total_co2e_kg: number;
+  percentage_contribution: number;
+}
+
+export interface ReductionSimulation {
+  baseline_total_kg: number;
+  simulated_total_kg: number;
+  total_reduction_kg: number;
+  reduction_percentage: number;
+}
+
+export interface NetZeroProjection {
+  baseline_year: number;
+  baseline_emissions_tonnes: number;
+  annual_reduction_percentage: number;
+  projected_net_zero_year: number;
+}
+
+export interface FactorScopeMapping {
+  id: string;
+  factor_name: string;
+  scope: 'Scope1' | 'Scope2' | 'Scope3';
+  description: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CarbonHotspot {
