@@ -253,9 +253,10 @@ const AdminInput = () => {
                   step="0.01"
                   placeholder="e.g., 0.73"
                   value={formData.emissionFactor}
-                  onChange={(e) => updateField("emissionFactor", e.target.value)}
+                  disabled
+                  className="bg-gray-100"
                 />
-                <p className="text-xs text-muted-foreground">kg CO₂e per unit</p>
+                <p className="text-xs text-muted-foreground">kg CO₂e per unit (auto-set from factor)</p>
               </div>
 
               <div className="space-y-2">
