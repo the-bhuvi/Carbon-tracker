@@ -6,51 +6,88 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Lightbulb, Droplet, Trash2, Fuel, Calculator, Car } from "lucide-react";
-import { useCreateCarbonSubmission, useDepartments, useCurrentUser } from "@/hooks/useSupabase";
+import { Calculator } from "lucide-react";
+import { useUpsertMonthlyAudit, useCurrentUser } from "@/hooks/useSupabase";
 
-interface CarbonInputData {
-  electricity: string;
-  diesel: string;
-  petrol: string;
-  lpg: string;
-  png: string;
-  travel: string;
-  water: string;
-  paper: string;
-  ewaste: string;
-  departmentId: string;
+interface MonthlyAuditFormData {
+  year: string;
+  month: string;
+  factorName: string;
+  activityData: string;
+  emissionFactor: string;
+  unit: string;
+  notes: string;
 }
+
+// Common emission factors
+const COMMON_FACTORS = {
+  'Electricity': 0.73,
+  'Natural Gas': 1.89,
+  'Diesel': 2.68,
+  'Petrol': 2.31,
+  'LPG': 1.50,
+  'PNG': 1.89,
+  'Water': 0.35,
+  'Paper': 1.70,
+  'Plastic': 2.00,
+  'E-Waste': 3.50,
+  'Organic Waste': 0.30,
+  'Travel (km)': 0.12
+};
+
+const FACTOR_UNITS = {
+  'Electricity': 'kWh',
+  'Natural Gas': 'm³',
+  'Diesel': 'liters',
+  'Petrol': 'liters',
+  'LPG': 'kg',
+  'PNG': 'm³',
+  'Water': 'liters',
+  'Paper': 'kg',
+  'Plastic': 'kg',
+  'E-Waste': 'kg',
+  'Organic Waste': 'kg',
+  'Travel (km)': 'km'
+};
 
 const AdminInput = () => {
   const { toast } = useToast();
   const { data: user } = useCurrentUser();
-  const { data: departments } = useDepartments();
-  const { mutate: createSubmission, isPending } = useCreateCarbonSubmission();
-  
-  const [formData, setFormData] = useState<CarbonInputData>({
-    electricity: "",
-    diesel: "",
-    petrol: "",
-    lpg: "",
-    png: "",
-    travel: "",
-    water: "",
-    paper: "",
-    ewaste: "",
-    departmentId: ""
+  const { mutate: upsertMonthlyAudit, isPending } = useUpsertMonthlyAudit();
+
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear().toString();
+  const currentMonth = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+
+  const [formData, setFormData] = useState<MonthlyAuditFormData>({
+    year: currentYear,
+    month: currentMonth,
+    factorName: 'Electricity',
+    activityData: '',
+    emissionFactor: COMMON_FACTORS['Electricity'].toString(),
+    unit: FACTOR_UNITS['Electricity'] || '',
+    notes: ''
   });
 
-  const updateField = (field: keyof CarbonInputData, value: string) => {
+  const updateField = (field: keyof MonthlyAuditFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+
+    // Auto-update emission factor and unit when factor changes
+    if (field === 'factorName' && value in COMMON_FACTORS) {
+      setFormData(prev => ({
+        ...prev,
+        emissionFactor: COMMON_FACTORS[value as keyof typeof COMMON_FACTORS].toString(),
+        unit: FACTOR_UNITS[value as keyof typeof FACTOR_UNITS] || ''
+      }));
+    }
   };
 
   const handleSubmit = async () => {
     // Validate required fields
-    if (!formData.departmentId) {
+    if (!formData.year || !formData.month || !formData.factorName || !formData.activityData) {
       toast({
         title: "Missing Information",
-        description: "Please select a department.",
+        description: "Please fill in all required fields (Year, Month, Factor, Activity Data).",
         variant: "destructive"
       });
       return;
@@ -65,246 +102,230 @@ const AdminInput = () => {
       return;
     }
 
-    // Prepare submission data
-    const submissionData = {
-      user_id: user.id,
-      department_id: formData.departmentId,
-      electricity_kwh: parseFloat(formData.electricity) || 0,
-      diesel_liters: parseFloat(formData.diesel) || 0,
-      petrol_liters: parseFloat(formData.petrol) || 0,
-      lpg_kg: parseFloat(formData.lpg) || 0,
-      png_m3: parseFloat(formData.png) || 0,
-      travel_km: parseFloat(formData.travel) || 0,
-      water_liters: parseFloat(formData.water) || 0,
-      paper_kg: parseFloat(formData.paper) || 0,
-      ewaste_kg: parseFloat(formData.ewaste) || 0
+    // Prepare audit data
+    const auditData = {
+      year: parseInt(formData.year),
+      month: parseInt(formData.month),
+      factor_name: formData.factorName,
+      activity_data: parseFloat(formData.activityData),
+      emission_factor: parseFloat(formData.emissionFactor),
+      unit: formData.unit || null,
+      notes: formData.notes || null,
+      created_by: user.id
     };
 
-    createSubmission(submissionData, {
-      onSuccess: (data) => {
+    upsertMonthlyAudit(auditData, {
+      onSuccess: () => {
+        const calculatedEmission = (parseFloat(formData.activityData) * parseFloat(formData.emissionFactor)).toFixed(2);
         toast({
           title: "Success!",
-          description: `Carbon footprint recorded: ${((data.total_carbon || 0) / 1000).toFixed(2)} tons CO₂e`,
+          description: `Monthly audit entry recorded: ${calculatedEmission} kg CO₂e`
         });
 
-        // Reset form
+        // Reset form but keep year/month
         setFormData({
-          electricity: "",
-          diesel: "",
-          petrol: "",
-          lpg: "",
-          png: "",
-          travel: "",
-          water: "",
-          paper: "",
-          ewaste: "",
-          departmentId: formData.departmentId // Keep department selected
+          year: formData.year,
+          month: formData.month,
+          factorName: 'Electricity',
+          activityData: '',
+          emissionFactor: COMMON_FACTORS['Electricity'].toString(),
+          unit: FACTOR_UNITS['Electricity'] || '',
+          notes: ''
         });
       },
       onError: (error: any) => {
         toast({
           title: "Submission Failed",
-          description: error.message || "Failed to save carbon footprint data",
+          description: error.message || "Failed to save monthly audit data",
           variant: "destructive"
         });
       }
     });
   };
 
+  const calculatedEmission = formData.activityData && formData.emissionFactor
+    ? (parseFloat(formData.activityData) * parseFloat(formData.emissionFactor)).toFixed(2)
+    : '0.00';
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Carbon Emission Input
+          Institutional Monthly Audit
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          Enter consumption data to track carbon footprint
+          Enter monthly emission factor data for institutional-level tracking (July 2024 onward)
         </p>
       </div>
 
       <div className="space-y-6">
-        {/* Department Selection */}
+        {/* Period Selection */}
         <Card>
           <CardHeader>
-            <CardTitle>Department</CardTitle>
-            <CardDescription>Select the department for this submission</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Select
-              value={formData.departmentId}
-              onValueChange={(value) => updateField("departmentId", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments?.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-
-        {/* Energy Consumption */}
-        <Card className="border-yellow-200 dark:border-yellow-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-yellow-600" />
-              Energy Consumption
-            </CardTitle>
-            <CardDescription>Electricity and fuel usage</CardDescription>
+            <CardTitle>Period</CardTitle>
+            <CardDescription>Select the year and month for this audit entry</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="electricity">Electricity (kWh)</Label>
-                <Input
-                  id="electricity"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g., 450"
-                  value={formData.electricity}
-                  onChange={(e) => updateField("electricity", e.target.value)}
-                />
+                <Label htmlFor="year">Year</Label>
+                <Select value={formData.year} onValueChange={(value) => updateField("year", value)}>
+                  <SelectTrigger id="year">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[2024, 2025, 2026, 2027].map(year => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="diesel">Diesel (liters)</Label>
-                <Input
-                  id="diesel"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g., 20"
-                  value={formData.diesel}
-                  onChange={(e) => updateField("diesel", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="petrol">Petrol (liters)</Label>
-                <Input
-                  id="petrol"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g., 30"
-                  value={formData.petrol}
-                  onChange={(e) => updateField("petrol", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="lpg">LPG (kg)</Label>
-                <Input
-                  id="lpg"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g., 15"
-                  value={formData.lpg}
-                  onChange={(e) => updateField("lpg", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="png">PNG (m³)</Label>
-                <Input
-                  id="png"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g., 25"
-                  value={formData.png}
-                  onChange={(e) => updateField("png", e.target.value)}
-                />
+                <Label htmlFor="month">Month</Label>
+                <Select value={formData.month} onValueChange={(value) => updateField("month", value)}>
+                  <SelectTrigger id="month">
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const monthNum = i + 1;
+                      const monthStr = monthNum.toString().padStart(2, '0');
+                      const monthName = new Date(2024, i).toLocaleDateString('en-US', { month: 'long' });
+                      return (
+                        <SelectItem key={monthNum} value={monthStr}>
+                          {monthName} ({monthStr})
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Transportation & Resources */}
-        <Card className="border-blue-200 dark:border-blue-800">
+        {/* Emission Factor Selection */}
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Car className="h-5 w-5 text-blue-600" />
-              Transportation & Resources
-            </CardTitle>
-            <CardDescription>Travel and resource consumption</CardDescription>
+            <CardTitle>Emission Factor</CardTitle>
+            <CardDescription>Select the emission factor or enter a custom one</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="factorName">Factor Name</Label>
+              <Select value={formData.factorName} onValueChange={(value) => updateField("factorName", value)}>
+                <SelectTrigger id="factorName">
+                  <SelectValue placeholder="Select factor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(COMMON_FACTORS).map(([name]) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">Custom Factor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="travel">Travel Distance (km)</Label>
+                <Label htmlFor="activityData">Activity Value</Label>
                 <Input
-                  id="travel"
+                  id="activityData"
                   type="number"
                   step="0.01"
-                  placeholder="e.g., 80"
-                  value={formData.travel}
-                  onChange={(e) => updateField("travel", e.target.value)}
+                  placeholder="e.g., 1000"
+                  value={formData.activityData}
+                  onChange={(e) => updateField("activityData", e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">in {formData.unit}</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="water" className="flex items-center gap-2">
-                  <Droplet className="h-4 w-4" />
-                  Water (liters)
-                </Label>
+                <Label htmlFor="emissionFactor">Emission Factor</Label>
                 <Input
-                  id="water"
+                  id="emissionFactor"
                   type="number"
                   step="0.01"
-                  placeholder="e.g., 8000"
-                  value={formData.water}
-                  onChange={(e) => updateField("water", e.target.value)}
+                  placeholder="e.g., 0.73"
+                  value={formData.emissionFactor}
+                  onChange={(e) => updateField("emissionFactor", e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">kg CO₂e per unit</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="paper">Paper (kg)</Label>
+                <Label htmlFor="calculatedEmission">Calculated Emission</Label>
                 <Input
-                  id="paper"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g., 12"
-                  value={formData.paper}
-                  onChange={(e) => updateField("paper", e.target.value)}
+                  id="calculatedEmission"
+                  type="text"
+                  placeholder="Auto-calculated"
+                  value={`${calculatedEmission} kg`}
+                  disabled
+                  className="bg-gray-100"
                 />
+                <p className="text-xs text-muted-foreground">Activity × Factor</p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
 
-              <div className="space-y-2">
-                <Label htmlFor="ewaste" className="flex items-center gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  E-Waste (kg)
-                </Label>
-                <Input
-                  id="ewaste"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g., 5"
-                  value={formData.ewaste}
-                  onChange={(e) => updateField("ewaste", e.target.value)}
-                />
-              </div>
+        {/* Additional Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Additional Information</CardTitle>
+            <CardDescription>Optional notes for this entry</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <textarea
+                id="notes"
+                placeholder="e.g., Building A electricity consumption, Generator maintenance..."
+                value={formData.notes}
+                onChange={(e) => updateField("notes", e.target.value)}
+                className="w-full p-2 border rounded-md min-h-[100px]"
+              />
             </div>
           </CardContent>
         </Card>
 
         <Alert>
           <AlertDescription>
-            <span className="font-semibold">Note:</span> All calculations are automatically performed using standard emission factors stored in the database.
+            <span className="font-semibold">Note:</span> Emission factors are automatically calculated using pre-configured values. You can customize the emission factor if needed for specific conditions or data sources.
           </AlertDescription>
         </Alert>
 
-        <Button 
-          onClick={handleSubmit}
-          className="w-full bg-green-600 hover:bg-green-700 text-white"
-          size="lg"
-          disabled={isPending}
-        >
-          <Calculator className="mr-2 h-5 w-5" />
-          {isPending ? 'Submitting...' : 'Submit Carbon Data'}
-        </Button>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Button 
+            onClick={handleSubmit}
+            className="w-full bg-green-600 hover:bg-green-700 text-white"
+            size="lg"
+            disabled={isPending}
+          >
+            <Calculator className="mr-2 h-5 w-5" />
+            {isPending ? 'Submitting...' : 'Submit Monthly Audit'}
+          </Button>
+          <Button 
+            onClick={() => setFormData({
+              year: currentYear,
+              month: currentMonth,
+              factorName: 'Electricity',
+              activityData: '',
+              emissionFactor: COMMON_FACTORS['Electricity'].toString(),
+              unit: FACTOR_UNITS['Electricity'] || '',
+              notes: ''
+            })}
+            variant="outline"
+            size="lg"
+          >
+            Reset Form
+          </Button>
+        </div>
       </div>
     </div>
   );

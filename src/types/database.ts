@@ -1,19 +1,10 @@
-export interface Department {
-  id: string;
-  name: string;
-  building_area: number | null;
-  student_count: number | null;
-  carbon_budget: number | null;
-  created_at: string;
-  updated_at: string;
-}
+// Department type removed - now using institutional-level tracking
 
 export interface User {
   id: string;
   name: string;
   email: string;
   role: 'student' | 'admin';
-  department_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -89,29 +80,90 @@ export interface CarbonSubmissionInput {
   organic_waste_kg?: number;
 }
 
-export interface DepartmentSummary {
-  department_id: string;
-  department_name: string;
-  total_submissions: number;
-  avg_carbon: number;
-  total_carbon: number;
-  carbon_trend: 'Excellent' | 'Good' | 'Needs Improvement';
+// Institutional Monthly Audit Types
+
+export interface EnrolledStudentsConfig {
+  id: string;
+  academic_year: string;
+  total_students: number;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface MonthlyTrend {
-  month_year: string;
-  submission_count: number;
-  avg_carbon: number;
-  total_carbon: number;
+export interface MonthlyAuditData {
+  id: string;
+  month: number;
+  year: number;
+  factor_name: string;
+  activity_data: number;
+  emission_factor: number;
+  calculated_co2e_kg: number;
+  unit: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface PerCapitaEmission {
-  department_id: string;
-  department_name: string;
-  total_carbon: number;
+export interface FactorBreakdown {
+  factor_name: string;
+  total_co2e_kg: number;
+  percentage: number;
+}
+
+export interface MonthlyEmissionSummary {
+  month: number;
+  year: number;
+  total_emission_kg: number;
+  per_capita_kg: number;
   student_count: number;
-  per_capita_carbon: number;
+  factor_count: number;
+  created_at: string;
+  updated_at: string;
 }
+
+export interface AcademicYearEmissionSummary {
+  academic_year: string;
+  total_emission_kg: number;
+  per_capita_kg: number;
+  avg_students: number;
+  highest_factor_name: string | null;
+  highest_factor_emission_kg: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CarbonOffset {
+  id: string;
+  month: number;
+  year: number;
+  offset_type: string;
+  quantity: number;
+  unit: string | null;
+  co2e_offset_kg: number;
+  source_description: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CarbonReduction {
+  id: string;
+  month: number;
+  year: number;
+  reduction_type: string;
+  baseline_co2e_kg: number;
+  actual_co2e_kg: number;
+  reduction_co2e_kg: number;
+  initiative_description: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type DashboardViewMode = 'monthly' | 'academic_year';
 
 // Survey System Types
 export interface Survey {
@@ -362,10 +414,35 @@ export interface EmissionRecordInput {
 export interface Database {
   public: {
     Tables: {
-      departments: {
-        Row: Department;
-        Insert: Omit<Department, 'id' | 'created_at' | 'updated_at'>;
-        Update: Partial<Omit<Department, 'id' | 'created_at' | 'updated_at'>>;
+      enrolled_students_config: {
+        Row: EnrolledStudentsConfig;
+        Insert: Omit<EnrolledStudentsConfig, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<EnrolledStudentsConfig, 'id' | 'created_at' | 'updated_at'>>;
+      };
+      monthly_audit_data: {
+        Row: MonthlyAuditData;
+        Insert: Omit<MonthlyAuditData, 'id' | 'created_at' | 'updated_at' | 'calculated_co2e_kg'>;
+        Update: Partial<Omit<MonthlyAuditData, 'id' | 'created_at' | 'updated_at' | 'calculated_co2e_kg'>>;
+      };
+      monthly_summary: {
+        Row: MonthlyEmissionSummary;
+        Insert: Omit<MonthlyEmissionSummary, 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<MonthlyEmissionSummary, 'created_at' | 'updated_at'>>;
+      };
+      academic_year_summary: {
+        Row: AcademicYearEmissionSummary;
+        Insert: Omit<AcademicYearEmissionSummary, 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<AcademicYearEmissionSummary, 'created_at' | 'updated_at'>>;
+      };
+      carbon_offsets: {
+        Row: CarbonOffset;
+        Insert: Omit<CarbonOffset, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<CarbonOffset, 'id' | 'created_at' | 'updated_at'>>;
+      };
+      carbon_reductions: {
+        Row: CarbonReduction;
+        Insert: Omit<CarbonReduction, 'id' | 'created_at' | 'updated_at' | 'reduction_co2e_kg'>;
+        Update: Partial<Omit<CarbonReduction, 'id' | 'created_at' | 'updated_at' | 'reduction_co2e_kg'>>;
       };
       users: {
         Row: User;
@@ -409,17 +486,29 @@ export interface Database {
       };
     };
     Functions: {
-      get_department_summary: {
-        Args: Record<string, never>;
-        Returns: DepartmentSummary[];
+      get_academic_year: {
+        Args: { from_date?: string };
+        Returns: string;
       };
-      get_monthly_trends: {
-        Args: { dept_id?: string };
-        Returns: MonthlyTrend[];
+      refresh_monthly_summary: {
+        Args: { p_year: number; p_month: number };
+        Returns: void;
       };
-      get_per_capita_emissions: {
-        Args: Record<string, never>;
-        Returns: PerCapitaEmission[];
+      refresh_academic_year_summary: {
+        Args: { p_academic_year: string };
+        Returns: void;
+      };
+      calculate_monthly_neutrality: {
+        Args: { p_year: number; p_month: number };
+        Returns: number;
+      };
+      calculate_academic_year_neutrality: {
+        Args: { p_academic_year: string };
+        Returns: number;
+      };
+      get_factor_breakdown: {
+        Args: { p_year: number; p_month?: number };
+        Returns: FactorBreakdown[];
       };
       get_campus_carbon_summary: {
         Args: { target_year: number };

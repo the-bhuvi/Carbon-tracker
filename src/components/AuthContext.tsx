@@ -8,7 +8,7 @@ interface AuthContextType {
   userRole: 'admin' | 'student' | 'faculty' | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, metadata?: { name: string; role: 'student' | 'admin'; department_id?: string }) => Promise<void>;
+  signUp: (email: string, password: string, metadata?: { name: string; role: 'student' | 'admin' }) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(user);
   };
 
-  const signUp = async (email: string, password: string, metadata?: { name: string; role: 'student' | 'admin'; department_id?: string }) => {
+  const signUp = async (email: string, password: string, metadata?: { name: string; role: 'student' | 'admin' }) => {
     const { user } = await auth.signUp(email, password, metadata);
     setUser(user);
   };

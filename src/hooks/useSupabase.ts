@@ -1,6 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { carbonSubmissionsApi, departmentsApi, usersApi, analyticsApi, emissionFactorsApi, supabase } from '@/lib/supabase';
-import type { CarbonSubmissionInput } from '@/types/database';
+import { 
+  carbonSubmissionsApi, 
+  usersApi, 
+  analyticsApi, 
+  emissionFactorsApi, 
+  enrolledStudentsApi,
+  monthlyAuditApi,
+  monthlyEmissionApi,
+  academicYearEmissionApi,
+  carbonOffsetsApi,
+  carbonReductionsApi,
+  neutralityApi,
+  factorBreakdownApi,
+  supabase 
+} from '@/lib/supabase';
+import type { CarbonSubmissionInput, MonthlyAuditData, DashboardViewMode } from '@/types/database';
 
 // Carbon Submissions Hooks
 export const useCarbonSubmissions = (userId?: string) => {
@@ -64,47 +78,9 @@ export const useCarbonSubmissionsByDateRange = (startDate: string, endDate: stri
   });
 };
 
-// Departments Hooks
-export const useDepartments = () => {
-  return useQuery({
-    queryKey: ['departments'],
-    queryFn: () => departmentsApi.getAll()
-  });
-};
+// Departments Hooks - REMOVED, use institutional-level hooks instead
 
-export const useDepartment = (id: string) => {
-  return useQuery({
-    queryKey: ['department', id],
-    queryFn: () => departmentsApi.getById(id),
-    enabled: !!id
-  });
-};
-
-export const useCreateDepartment = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: { name: string; building_area?: number; student_count?: number }) =>
-      departmentsApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
-    }
-  });
-};
-
-export const useUpdateDepartment = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<{ name: string; building_area: number; student_count: number }> }) =>
-      departmentsApi.update(id, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
-    }
-  });
-};
-
-// Users Hooks
+// Users Hooks (updated)
 export const useCurrentUser = () => {
   return useQuery({
     queryKey: ['current-user'],
@@ -137,7 +113,7 @@ export const useUpdateUser = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<{ name: string; email: string; department_id: string }> }) =>
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<{ name: string; email: string }> }) =>
       usersApi.update(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -146,25 +122,214 @@ export const useUpdateUser = () => {
   });
 };
 
-// Analytics Hooks
-export const useDepartmentSummary = () => {
+// Analytics Hooks - REMOVED (legacy department-based)
+
+// Institutional Monthly Audit Hooks
+
+// Enrolled Students Hooks
+export const useEnrolledStudents = (academicYear: string) => {
   return useQuery({
-    queryKey: ['analytics', 'department-summary'],
-    queryFn: () => analyticsApi.getDepartmentSummary()
+    queryKey: ['enrolled-students', academicYear],
+    queryFn: () => enrolledStudentsApi.getByAcademicYear(academicYear),
+    enabled: !!academicYear
   });
 };
 
-export const useMonthlyTrends = (departmentId?: string) => {
+export const useAllEnrolledStudents = () => {
   return useQuery({
-    queryKey: ['analytics', 'monthly-trends', departmentId],
-    queryFn: () => analyticsApi.getMonthlyTrends(departmentId)
+    queryKey: ['enrolled-students', 'all'],
+    queryFn: () => enrolledStudentsApi.getAll()
   });
 };
 
-export const usePerCapitaEmissions = () => {
+export const useUpsertEnrolledStudents = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ academicYear, totalStudents, notes }: { academicYear: string; totalStudents: number; notes?: string }) =>
+      enrolledStudentsApi.upsert(academicYear, totalStudents, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['enrolled-students'] });
+    }
+  });
+};
+
+// Monthly Audit Data Hooks
+export const useMonthlyAuditData = (year?: number, month?: number) => {
   return useQuery({
-    queryKey: ['analytics', 'per-capita'],
-    queryFn: () => analyticsApi.getPerCapitaEmissions()
+    queryKey: ['monthly-audit', year, month],
+    queryFn: () => month && year ? monthlyAuditApi.getByMonth(year, month) : Promise.resolve([]),
+    enabled: !!(year && month)
+  });
+};
+
+export const useMonthlyAuditByYear = (year: number) => {
+  return useQuery({
+    queryKey: ['monthly-audit', year],
+    queryFn: () => monthlyAuditApi.getByYear(year),
+    enabled: !!year
+  });
+};
+
+export const useUpsertMonthlyAudit = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: Omit<MonthlyAuditData, 'id' | 'created_at' | 'updated_at' | 'calculated_co2e_kg'>) =>
+      monthlyAuditApi.upsert(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monthly-audit'] });
+      queryClient.invalidateQueries({ queryKey: ['monthly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-year-summary'] });
+    }
+  });
+};
+
+// Monthly Emission Summary Hooks
+export const useMonthlyEmissionSummary = (year?: number, month?: number) => {
+  return useQuery({
+    queryKey: ['monthly-summary', year, month],
+    queryFn: () => year && month ? monthlyEmissionApi.getByMonth(year, month) : Promise.resolve(null),
+    enabled: !!(year && month)
+  });
+};
+
+export const useMonthlyEmissionByYear = (year: number) => {
+  return useQuery({
+    queryKey: ['monthly-summary', year],
+    queryFn: () => monthlyEmissionApi.getByYear(year),
+    enabled: !!year
+  });
+};
+
+export const useRefreshMonthlyEmission = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ year, month }: { year: number; month: number }) =>
+      monthlyEmissionApi.refresh(year, month),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monthly-summary'] });
+    }
+  });
+};
+
+// Academic Year Emission Summary Hooks
+export const useAcademicYearEmissionSummary = (academicYear: string) => {
+  return useQuery({
+    queryKey: ['academic-year-summary', academicYear],
+    queryFn: () => academicYearEmissionApi.getByAcademicYear(academicYear),
+    enabled: !!academicYear
+  });
+};
+
+export const useAllAcademicYearSummaries = () => {
+  return useQuery({
+    queryKey: ['academic-year-summary', 'all'],
+    queryFn: () => academicYearEmissionApi.getAll()
+  });
+};
+
+export const useRefreshAcademicYearEmission = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (academicYear: string) =>
+      academicYearEmissionApi.refresh(academicYear),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['academic-year-summary'] });
+    }
+  });
+};
+
+// Factor Breakdown Hooks
+export const useFactorBreakdown = (year?: number, month?: number) => {
+  return useQuery({
+    queryKey: ['factor-breakdown', year, month],
+    queryFn: () => {
+      if (year && month) {
+        return factorBreakdownApi.getByMonth(year, month);
+      } else if (year) {
+        return factorBreakdownApi.getByYear(year);
+      }
+      return Promise.resolve([]);
+    },
+    enabled: !!year
+  });
+};
+
+// Neutrality Hooks
+export const useMonthlyNeutrality = (year?: number, month?: number) => {
+  return useQuery({
+    queryKey: ['neutrality', 'monthly', year, month],
+    queryFn: () => year && month ? neutralityApi.getMonthlyNeutrality(year, month) : Promise.resolve(0),
+    enabled: !!(year && month)
+  });
+};
+
+export const useAcademicYearNeutrality = (academicYear: string) => {
+  return useQuery({
+    queryKey: ['neutrality', 'academic-year', academicYear],
+    queryFn: () => academicYear ? neutralityApi.getAcademicYearNeutrality(academicYear) : Promise.resolve(0),
+    enabled: !!academicYear
+  });
+};
+
+// Carbon Offsets Hooks
+export const useCarbonOffsetsMonth = (year?: number, month?: number) => {
+  return useQuery({
+    queryKey: ['carbon-offsets', year, month],
+    queryFn: () => year && month ? carbonOffsetsApi.getByMonth(year, month) : Promise.resolve([]),
+    enabled: !!(year && month)
+  });
+};
+
+export const useCarbonOffsetsYear = (academicYear: string) => {
+  return useQuery({
+    queryKey: ['carbon-offsets', academicYear],
+    queryFn: () => academicYear ? carbonOffsetsApi.getByAcademicYear(academicYear) : Promise.resolve([]),
+    enabled: !!academicYear
+  });
+};
+
+export const useCreateCarbonOffset = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: any) => carbonOffsetsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['carbon-offsets'] });
+      queryClient.invalidateQueries({ queryKey: ['neutrality'] });
+    }
+  });
+};
+
+// Carbon Reductions Hooks
+export const useCarbonReductionsMonth = (year?: number, month?: number) => {
+  return useQuery({
+    queryKey: ['carbon-reductions', year, month],
+    queryFn: () => year && month ? carbonReductionsApi.getByMonth(year, month) : Promise.resolve([]),
+    enabled: !!(year && month)
+  });
+};
+
+export const useCarbonReductionsYear = (academicYear: string) => {
+  return useQuery({
+    queryKey: ['carbon-reductions', academicYear],
+    queryFn: () => academicYear ? carbonReductionsApi.getByAcademicYear(academicYear) : Promise.resolve([]),
+    enabled: !!academicYear
+  });
+};
+
+export const useCreateCarbonReduction = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: any) => carbonReductionsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['carbon-reductions'] });
+      queryClient.invalidateQueries({ queryKey: ['neutrality'] });
+    }
   });
 };
 
