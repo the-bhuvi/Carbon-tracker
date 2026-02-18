@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Leaf, LayoutDashboard, FileInput, Users, History, LogOut, ClipboardList, GraduationCap, TreePine } from "lucide-react";
+import { Leaf, LayoutDashboard, FileInput, Users, LogOut, ClipboardList, GraduationCap, TreePine } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { Button } from "./ui/button";
 
@@ -13,7 +13,6 @@ const Navigation = () => {
     const baseItems = [
       { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
       { path: "/carbon-neutrality", icon: TreePine, label: "Carbon Neutrality" },
-      { path: "/history", icon: History, label: "History" },
     ];
 
     if (userRole === 'admin') {
@@ -97,3 +96,4 @@ const Navigation = () => {
 };
 
 export default Navigation;
+

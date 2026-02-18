@@ -106,7 +106,6 @@ const App = () => (
                       <Route path="/debug" element={<DebugUser />} />
                       <Route path="/student-survey" element={<StudentSurvey />} />
                       <Route path="/faculty-survey" element={<FacultySurvey />} />
-                      <Route path="/history" element={<History />} />
                       
                       {/* Admin-only routes */}
                       <Route path="/admin/input" element={<AdminRoute><AdminInput /></AdminRoute>} />
