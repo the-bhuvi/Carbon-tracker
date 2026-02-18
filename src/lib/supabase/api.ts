@@ -8,7 +8,13 @@ import type {
   FactorBreakdown,
   CarbonOffset,
   CarbonReduction,
-  EnrolledStudentsConfig
+  EnrolledStudentsConfig,
+  TopContributor,
+  FactorPercentage,
+  EmissionIntensityMetrics,
+  ScopeBreakdownMetric,
+  ReductionSimulation,
+  NetZeroProjection
 } from '@/types/database';
 
 // Carbon Submissions API (Legacy - kept for backward compatibility)
@@ -748,5 +754,149 @@ export const surveyResponsesApi = {
       avgCarbon,
       responses: data || []
     };
+  }
+};
+
+// ============================================
+// ANALYTICAL FEATURES APIs
+// ============================================
+
+// Top Contributor API
+export const topContributorApi = {
+  async getForMonth(year: number, month: number): Promise<TopContributor | null> {
+    const { data, error } = await supabase
+      .rpc('get_top_contributor', {
+        p_year: year,
+        p_month: month
+      });
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data && data.length > 0 ? data[0] : null;
+  }
+};
+
+// Factor Percentages API
+export const factorPercentagesApi = {
+  async getForMonth(year: number, month: number): Promise<FactorPercentage[]> {
+    const { data, error } = await supabase
+      .rpc('get_factor_percentages', {
+        p_year: year,
+        p_month: month
+      });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getForYear(year: number): Promise<FactorPercentage[]> {
+    const { data, error } = await supabase
+      .rpc('get_factor_percentages', {
+        p_year: year,
+        p_month: null
+      });
+
+    if (error) throw error;
+    return data || [];
+  }
+};
+
+// Emission Intensity API
+export const emissionIntensityApi = {
+  async getForMonth(year: number, month: number): Promise<EmissionIntensityMetrics | null> {
+    const { data, error } = await supabase
+      .rpc('get_emission_intensity', {
+        p_year: year,
+        p_month: month
+      });
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data && data.length > 0 ? data[0] : null;
+  },
+
+  async getForYear(year: number): Promise<EmissionIntensityMetrics | null> {
+    const { data, error } = await supabase
+      .rpc('get_emission_intensity', {
+        p_year: year,
+        p_month: null
+      });
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data && data.length > 0 ? data[0] : null;
+  }
+};
+
+// Reduction Simulator API
+export const reductionSimulatorApi = {
+  async simulate(
+    year: number,
+    month: number,
+    reductionJson: Record<string, number>
+  ): Promise<ReductionSimulation | null> {
+    const { data, error } = await supabase
+      .rpc('simulate_emission_reduction', {
+        p_year: year,
+        p_month: month,
+        p_reduction_json: reductionJson
+      });
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data && data.length > 0 ? data[0] : null;
+  }
+};
+
+// Scope Breakdown API
+export const scopeBreakdownApi = {
+  async getForMonth(year: number, month: number): Promise<ScopeBreakdownMetric[]> {
+    const { data, error } = await supabase
+      .rpc('get_scope_breakdown', {
+        p_year: year,
+        p_month: month
+      });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getForYear(year: number): Promise<ScopeBreakdownMetric[]> {
+    const { data, error } = await supabase
+      .rpc('get_scope_breakdown', {
+        p_year: year,
+        p_month: null
+      });
+
+    if (error) throw error;
+    return data || [];
+  }
+};
+
+// Net Zero Projection API
+export const netZeroProjectionApi = {
+  async calculate(
+    baselineYear: number,
+    annualReductionPercentage: number = 5
+  ): Promise<NetZeroProjection | null> {
+    const { data, error } = await supabase
+      .rpc('calculate_net_zero_year', {
+        p_baseline_year: baselineYear,
+        p_annual_reduction_percentage: annualReductionPercentage
+      });
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data && data.length > 0 ? data[0] : null;
   }
 };
