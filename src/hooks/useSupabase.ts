@@ -350,7 +350,6 @@ export const useUpdateEmissionFactors = () => {
       diesel_factor: number;
       petrol_factor: number;
       lpg_factor: number;
-      png_factor: number;
       travel_factor: number;
       water_factor: number;
       ewaste_factor: number;

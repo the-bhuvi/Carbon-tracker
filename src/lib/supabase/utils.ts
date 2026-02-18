@@ -184,12 +184,6 @@ export const getEmissionBreakdown = (submission: CarbonSubmission, factors: any)
       carbon: (submission.lpg_kg || 0) * factors.lpg_factor
     },
     {
-      category: 'PNG',
-      value: submission.png_m3,
-      unit: 'm³',
-      carbon: (submission.png_m3 || 0) * factors.png_factor
-    },
-    {
       category: 'Travel',
       value: submission.travel_km,
       unit: 'km',

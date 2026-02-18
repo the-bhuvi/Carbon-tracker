@@ -33,7 +33,6 @@ const EMISSION_CATEGORIES = [
   'diesel',
   'petrol',
   'lpg',
-  'png',
   'travel',
   'water',
   'paper',

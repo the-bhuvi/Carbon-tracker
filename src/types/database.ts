@@ -15,7 +15,6 @@ export interface EmissionFactors {
   diesel_factor: number;
   petrol_factor: number;
   lpg_factor: number;
-  png_factor: number;
   travel_factor: number;
   water_factor: number;
   ewaste_factor: number;
@@ -36,7 +35,6 @@ export interface CarbonSubmission {
   diesel_liters: number;
   petrol_liters: number;
   lpg_kg: number;
-  png_m3: number;
   
   // Transportation
   travel_km: number;
