@@ -9,21 +9,41 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { useCampusCarbonSummary } from '@/hooks/useCampusCarbonSummary';
+import {
+  useCampusCarbonSummary,
+  useCampusCarbonSummaryByAcademicYear,
+} from '@/hooks/useCampusCarbonSummary';
 import { CarbonKPICards } from '@/components/CarbonKPICards';
 import { ScopeBreakdownChart } from '@/components/ScopeBreakdownChart';
 import { NeutralityProgress } from '@/components/NeutralityProgress';
 import { CarbonSimulator } from '@/components/CarbonSimulator';
 import { RecommendationsPanel } from '@/components/RecommendationsPanel';
 
-export function CarbonNeutralityDashboard() {
-  const currentYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState(currentYear);
+type ViewMode = 'calendar' | 'academic';
 
-  const { data: summary, isLoading, error } = useCampusCarbonSummary(selectedYear);
+function buildAcademicYearOptions(currentYear: number): string[] {
+  return [
+    `${currentYear}-${currentYear + 1}`,
+    `${currentYear - 1}-${currentYear}`,
+    `${currentYear - 2}-${currentYear - 1}`,
+    `${currentYear - 3}-${currentYear - 2}`,
+  ];
+}
 
-  // Generate year options (current year and past 4 years)
-  const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
+function NeutralityContent({ viewMode, selectedYear, selectedAcademicYear }: {
+  viewMode: ViewMode;
+  selectedYear: number;
+  selectedAcademicYear: string;
+}) {
+  const calendarQuery = useCampusCarbonSummary(viewMode === 'calendar' ? selectedYear : 0);
+  const academicQuery = useCampusCarbonSummaryByAcademicYear(
+    viewMode === 'academic' ? selectedAcademicYear : ''
+  );
+
+  const { data: summary, isLoading, error } =
+    viewMode === 'academic' ? academicQuery : calendarQuery;
+
+  const yearLabel = viewMode === 'academic' ? selectedAcademicYear : String(selectedYear);
 
   if (isLoading) {
     return (
@@ -49,36 +69,19 @@ export function CarbonNeutralityDashboard() {
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          No data available for {selectedYear}. Please select a different year.
+          No data available for {yearLabel}. Please select a different period.
         </AlertDescription>
       </Alert>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Carbon Neutrality Dashboard</h1>
-          <p className="text-muted-foreground">
-            Track campus emissions, tree absorption, and progress toward carbon neutrality
-          </p>
-        </div>
-        <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(Number(val))}>
-          <SelectTrigger className="w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {yearOptions.map((year) => (
-              <SelectItem key={year} value={year.toString()}>
-                {year}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+  const simulatorYear =
+    viewMode === 'academic'
+      ? parseInt(selectedAcademicYear.split('-')[0])
+      : selectedYear;
 
+  return (
+    <>
       {/* KPI Cards */}
       <CarbonKPICards summary={summary} />
 
@@ -90,7 +93,6 @@ export function CarbonNeutralityDashboard() {
           <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
         </TabsList>
 
-        {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
             <NeutralityProgress summary={summary} />
@@ -98,16 +100,91 @@ export function CarbonNeutralityDashboard() {
           </div>
         </TabsContent>
 
-        {/* Simulator Tab */}
         <TabsContent value="simulator" className="space-y-6">
-          <CarbonSimulator year={selectedYear} defaultTreeCount={summary.total_tree_count} />
+          <CarbonSimulator year={simulatorYear} defaultTreeCount={summary.total_tree_count} />
         </TabsContent>
 
-        {/* Recommendations Tab */}
         <TabsContent value="recommendations" className="space-y-6">
-          <RecommendationsPanel year={selectedYear} />
+          <RecommendationsPanel year={simulatorYear} />
         </TabsContent>
       </Tabs>
+    </>
+  );
+}
+
+export function CarbonNeutralityDashboard() {
+  const currentYear = new Date().getFullYear();
+  const [viewMode, setViewMode] = useState<ViewMode>('academic');
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState(
+    `${currentYear - 1}-${currentYear}`
+  );
+
+  const calendarYearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  const academicYearOptions = buildAcademicYearOptions(currentYear);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Carbon Neutrality Dashboard</h1>
+          <p className="text-muted-foreground">
+            Track campus emissions, tree absorption, and progress toward carbon neutrality
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Mode toggle */}
+          <Select value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="academic">Academic Year</SelectItem>
+              <SelectItem value="calendar">Calendar Year</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Year selector */}
+          {viewMode === 'calendar' ? (
+            <Select
+              value={selectedYear.toString()}
+              onValueChange={(v) => setSelectedYear(Number(v))}
+            >
+              <SelectTrigger className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {calendarYearOptions.map((y) => (
+                  <SelectItem key={y} value={y.toString()}>
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Select value={selectedAcademicYear} onValueChange={setSelectedAcademicYear}>
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {academicYearOptions.map((ay) => (
+                  <SelectItem key={ay} value={ay}>
+                    {ay}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </div>
+
+      <NeutralityContent
+        viewMode={viewMode}
+        selectedYear={selectedYear}
+        selectedAcademicYear={selectedAcademicYear}
+      />
     </div>
   );
 }

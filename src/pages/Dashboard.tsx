@@ -23,7 +23,7 @@ const Dashboard = () => {
   const { data: availableYears = [] } = useAvailableAuditYears();
   useEffect(() => {
     if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
-      setSelectedYear(availableYears[0]); // pick most recent year with data
+      setSelectedYear(availableYears[0]);
     }
   }, [availableYears]);
 
@@ -31,6 +31,13 @@ const Dashboard = () => {
   const { data: monthlyData = [], isLoading: monthlyLoading, error: monthlyError } = useMonthlyEmissionByYear(selectedYear);
   const { data: monthlyFactorBreakdown = [] } = useFactorBreakdown(selectedYear, selectedMonth);
   const { data: monthlyNeutrality = 0 } = useMonthlyNeutrality(selectedYear, selectedMonth);
+
+  // Auto-select first available month when year/data changes
+  useEffect(() => {
+    if (monthlyData.length > 0 && !monthlyData.find(m => m.month === selectedMonth)) {
+      setSelectedMonth(monthlyData[0].month);
+    }
+  }, [monthlyData]);
 
   // Academic year view data
   const { data: academicYearSummary, isLoading: academicLoading, error: academicError } = useAcademicYearEmissionSummary(selectedAcademicYear);
@@ -166,7 +173,7 @@ const Dashboard = () => {
       </div>
 
       {/* Period Selection */}
-      <div className="mb-6 flex gap-4">
+      <div className="mb-6 flex gap-4 flex-wrap">
         {viewMode === 'monthly' && (
           <>
             <select
@@ -174,7 +181,7 @@ const Dashboard = () => {
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
               className="px-3 py-2 border rounded-md"
             >
-              {[currentYear - 1, currentYear, currentYear + 1].map(y => (
+              {(availableYears.length > 0 ? availableYears : [currentYear - 1, currentYear, currentYear + 1]).map(y => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
@@ -183,11 +190,18 @@ const Dashboard = () => {
               onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
               className="px-3 py-2 border rounded-md"
             >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                <option key={m} value={m}>
-                  {new Date(selectedYear, m - 1).toLocaleDateString('en-US', { month: 'long' })}
-                </option>
-              ))}
+              {monthlyData.length > 0
+                ? monthlyData.map(m => (
+                    <option key={m.month} value={m.month}>
+                      {new Date(selectedYear, m.month - 1).toLocaleDateString('en-US', { month: 'long' })}
+                    </option>
+                  ))
+                : Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                    <option key={m} value={m}>
+                      {new Date(selectedYear, m - 1).toLocaleDateString('en-US', { month: 'long' })}
+                    </option>
+                  ))
+              }
             </select>
           </>
         )}
@@ -197,8 +211,9 @@ const Dashboard = () => {
             onChange={(e) => setSelectedAcademicYear(e.target.value)}
             className="px-3 py-2 border rounded-md"
           >
-            <option value={currentAcademicYear}>{currentAcademicYear}</option>
-            <option value={`${currentYear - 1}-${currentYear}`}>{currentYear - 1}-{currentYear}</option>
+            {['2024-2025', '2025-2026', '2026-2027'].map(ay => (
+              <option key={ay} value={ay}>{ay}</option>
+            ))}
           </select>
         )}
       </div>
@@ -272,25 +287,31 @@ const Dashboard = () => {
             <CardDescription>Emissions by factor (descending)</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={factorData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percentage }) => `${name}: ${(percentage).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {factorData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(2)} tons CO₂e`} />
-              </PieChart>
-            </ResponsiveContainer>
+            {factorData.length === 0 ? (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
+                No factor data for selected period
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={factorData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percentage }) => `${name}: ${(percentage).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {factorData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(2)} tons CO₂e`} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -301,15 +322,21 @@ const Dashboard = () => {
             <CardDescription>Emissions by factor (tons CO₂e)</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={factorData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                <YAxis />
-                <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(2)} tons`} />
-                <Bar dataKey="value" name="Emissions (kg)" fill="#22c55e" />
-              </BarChart>
-            </ResponsiveContainer>
+            {factorData.length === 0 ? (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
+                No factor data for selected period
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={factorData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                  <YAxis />
+                  <Tooltip formatter={(value: number) => `${(value / 1000).toFixed(2)} tons`} />
+                  <Bar dataKey="value" name="Emissions (kg)" fill="#22c55e" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>

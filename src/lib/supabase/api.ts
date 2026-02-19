@@ -741,11 +741,13 @@ export const factorBreakdownApi = {
     }
 
     // Fallback 2: compute from legacy carbon_submissions
+    const mm = String(month).padStart(2, '0');
+    const nextMonth = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2,'0')}-01`;
     const { data: subs } = await supabase
       .from('carbon_submissions')
-      .select('electricity_kwh, diesel_liters, petrol_liters, lpg_kg, travel_km, water_liters, paper_kg, plastic_kg, ewaste_kg')
-      .gte('submission_date', `${year}-${String(month).padStart(2,'0')}-01`)
-      .lte('submission_date', `${year}-${String(month).padStart(2,'0')}-31`);
+      .select('electricity_kwh, diesel_liters, petrol_liters, lpg_kg, travel_km, water_liters, paper_kg, plastic_kg, ewaste_kg, organic_waste_kg')
+      .gte('submission_date', `${year}-${mm}-01`)
+      .lt('submission_date', nextMonth);
 
     if (!subs || subs.length === 0) return [];
     return submissionsToFactorBreakdown(subs);
@@ -783,7 +785,7 @@ export const factorBreakdownApi = {
     // Fallback 2: compute from legacy carbon_submissions
     const { data: subs } = await supabase
       .from('carbon_submissions')
-      .select('electricity_kwh, diesel_liters, petrol_liters, lpg_kg, travel_km, water_liters, paper_kg, plastic_kg, ewaste_kg')
+      .select('electricity_kwh, diesel_liters, petrol_liters, lpg_kg, travel_km, water_liters, paper_kg, plastic_kg, ewaste_kg, organic_waste_kg')
       .gte('submission_date', `${year}-01-01`)
       .lte('submission_date', `${year}-12-31`);
 
