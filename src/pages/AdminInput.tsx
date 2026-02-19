@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Calculator } from "lucide-react";
-import { useUpsertMonthlyAudit, useCurrentUser } from "@/hooks/useSupabase";
+import { Calculator, RefreshCw } from "lucide-react";
+import { useUpsertMonthlyAudit, useRefreshMonthlyEmission, useRefreshMonthlyYear, useCurrentUser } from "@/hooks/useSupabase";
 
 interface MonthlyAuditFormData {
   year: string;
@@ -52,6 +52,8 @@ const AdminInput = () => {
   const { toast } = useToast();
   const { data: user } = useCurrentUser();
   const { mutate: upsertMonthlyAudit, isPending } = useUpsertMonthlyAudit();
+  const { mutate: refreshMonthly } = useRefreshMonthlyEmission();
+  const { mutate: refreshYear, isPending: isRefreshing } = useRefreshMonthlyYear();
 
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear().toString();
@@ -119,6 +121,9 @@ const AdminInput = () => {
           title: "Success!",
           description: `Monthly audit entry recorded: ${calculatedEmission} kg CO₂e`
         });
+
+        // Refresh monthly_summary so dashboard reflects the new data
+        refreshMonthly({ year: parseInt(formData.year), month: parseInt(formData.month) });
 
         // Reset form but keep year/month
         setFormData({
@@ -304,7 +309,7 @@ const AdminInput = () => {
             onClick={handleSubmit}
             className="w-full bg-green-600 hover:bg-green-700 text-white"
             size="lg"
-            disabled={isPending}
+            disabled={isPending || isRefreshing}
           >
             <Calculator className="mr-2 h-5 w-5" />
             {isPending ? 'Submitting...' : 'Submit Monthly Audit'}
@@ -325,6 +330,19 @@ const AdminInput = () => {
             Reset Form
           </Button>
         </div>
+
+        <Button
+          onClick={() => refreshYear(parseInt(formData.year), {
+            onSuccess: () => toast({ title: "Dashboard Refreshed", description: `Summary data updated for ${formData.year}` }),
+            onError: (e: any) => toast({ title: "Refresh Failed", description: e.message, variant: "destructive" })
+          })}
+          variant="secondary"
+          className="w-full"
+          disabled={isPending || isRefreshing}
+        >
+          <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Refreshing Dashboard...' : `Sync ${formData.year} Data to Dashboard`}
+        </Button>
       </div>
     </div>
   );

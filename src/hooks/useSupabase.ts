@@ -171,6 +171,13 @@ export const useMonthlyAuditByYear = (year: number) => {
   });
 };
 
+export const useAvailableAuditYears = () => {
+  return useQuery({
+    queryKey: ['audit-available-years'],
+    queryFn: () => monthlyAuditApi.getAvailableYears(),
+  });
+};
+
 export const useUpsertMonthlyAudit = () => {
   const queryClient = useQueryClient();
 
@@ -210,6 +217,18 @@ export const useRefreshMonthlyEmission = () => {
       monthlyEmissionApi.refresh(year, month),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['monthly-summary'] });
+    }
+  });
+};
+
+export const useRefreshMonthlyYear = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (year: number) => monthlyEmissionApi.refreshYear(year),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monthly-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-year-summary'] });
     }
   });
 };

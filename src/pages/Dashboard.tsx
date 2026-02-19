@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
 import { TrendingUp, AlertTriangle, Leaf, Calendar } from "lucide-react";
-import { useMonthlyEmissionByYear, useAcademicYearEmissionSummary, useFactorBreakdown, useMonthlyNeutrality, useAcademicYearNeutrality } from "@/hooks/useSupabase";
+import { useMonthlyEmissionByYear, useAcademicYearEmissionSummary, useFactorBreakdown, useMonthlyNeutrality, useAcademicYearNeutrality, useAvailableAuditYears } from "@/hooks/useSupabase";
 
 type ViewMode = 'monthly' | 'academic_year';
 
@@ -19,17 +19,26 @@ const Dashboard = () => {
   const [selectedAcademicYear, setSelectedAcademicYear] = useState(currentAcademicYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
+  // Auto-detect year with data
+  const { data: availableYears = [] } = useAvailableAuditYears();
+  useEffect(() => {
+    if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[0]); // pick most recent year with data
+    }
+  }, [availableYears]);
+
   // Monthly view data
-  const { data: monthlyData = [] } = useMonthlyEmissionByYear(selectedYear);
+  const { data: monthlyData = [], isLoading: monthlyLoading, error: monthlyError } = useMonthlyEmissionByYear(selectedYear);
   const { data: monthlyFactorBreakdown = [] } = useFactorBreakdown(selectedYear, selectedMonth);
   const { data: monthlyNeutrality = 0 } = useMonthlyNeutrality(selectedYear, selectedMonth);
 
   // Academic year view data
-  const { data: academicYearSummary } = useAcademicYearEmissionSummary(selectedAcademicYear);
+  const { data: academicYearSummary, isLoading: academicLoading, error: academicError } = useAcademicYearEmissionSummary(selectedAcademicYear);
   const { data: academicFactorBreakdown = [] } = useFactorBreakdown(selectedYear);
   const { data: academicYearNeutrality = 0 } = useAcademicYearNeutrality(selectedAcademicYear);
 
-  const isLoading = viewMode === 'monthly' ? !monthlyData : !academicYearSummary;
+  const isLoading = viewMode === 'monthly' ? monthlyLoading : academicLoading;
+  const queryError = viewMode === 'monthly' ? monthlyError : academicError;
 
   // Get current month summary
   const currentMonthSummary = monthlyData?.find(m => m.month === selectedMonth);
@@ -83,12 +92,40 @@ const Dashboard = () => {
     );
   }
 
-  if (totalEmissions === 0) {
+  if (queryError) {
     return (
       <div className="container mx-auto px-4 py-8">
+        <Alert variant="destructive">
+          <AlertDescription>
+            Error loading data: {(queryError as Error).message}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (totalEmissions === 0) {
+    const yearOptions = availableYears.length > 0 ? availableYears : [2024, 2025, 2026, 2027];
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-4 flex gap-2 items-center">
+          <span className="text-sm text-gray-600">Year:</span>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+            className="px-3 py-1 border rounded-md text-sm"
+          >
+            {yearOptions.map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
         <Alert>
           <AlertDescription>
-            No emission data available. Please enter monthly audit data using the Admin Input page.
+            No emission data found for <strong>{selectedYear}</strong>.{' '}
+            {availableYears.length > 0
+              ? `Data is available for: ${availableYears.join(', ')}. Please select one of those years.`
+              : 'Please enter monthly audit data using the Admin Input page.'}
           </AlertDescription>
         </Alert>
       </div>
