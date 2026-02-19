@@ -16,5 +16,12 @@ export {
   carbonOffsetsApi,
   carbonReductionsApi,
   neutralityApi,
-  factorBreakdownApi
+  factorBreakdownApi,
+  // Analytical features APIs
+  topContributorApi,
+  factorPercentagesApi,
+  emissionIntensityApi,
+  reductionSimulatorApi,
+  scopeBreakdownApi,
+  netZeroProjectionApi
 } from './api';

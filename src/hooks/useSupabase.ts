@@ -12,6 +12,12 @@ import {
   carbonReductionsApi,
   neutralityApi,
   factorBreakdownApi,
+  topContributorApi,
+  factorPercentagesApi,
+  emissionIntensityApi,
+  reductionSimulatorApi,
+  scopeBreakdownApi,
+  netZeroProjectionApi,
   supabase 
 } from '@/lib/supabase';
 import type { CarbonSubmissionInput, MonthlyAuditData, DashboardViewMode } from '@/types/database';
@@ -376,5 +382,98 @@ export const useUpdateEmissionFactors = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['emission-factors'] });
     }
+  });
+};
+
+// ============================================
+// ANALYTICAL FEATURES HOOKS
+// ============================================
+
+// Top Contributor Hook
+export const useTopContributor = (year?: number, month?: number) => {
+  return useQuery({
+    queryKey: ['top-contributor', year, month],
+    queryFn: () => year && month ? topContributorApi.getForMonth(year, month) : Promise.resolve(null),
+    enabled: !!(year && month)
+  });
+};
+
+// Factor Percentages Hook
+export const useFactorPercentages = (year?: number, month?: number) => {
+  return useQuery({
+    queryKey: ['factor-percentages', year, month],
+    queryFn: () => {
+      if (year && month) {
+        return factorPercentagesApi.getForMonth(year, month);
+      } else if (year) {
+        return factorPercentagesApi.getForYear(year);
+      }
+      return Promise.resolve([]);
+    },
+    enabled: !!year
+  });
+};
+
+// Emission Intensity Hook
+export const useEmissionIntensity = (year?: number, month?: number) => {
+  return useQuery({
+    queryKey: ['emission-intensity', year, month],
+    queryFn: () => {
+      if (year && month) {
+        return emissionIntensityApi.getForMonth(year, month);
+      } else if (year) {
+        return emissionIntensityApi.getForYear(year);
+      }
+      return Promise.resolve(null);
+    },
+    enabled: !!year
+  });
+};
+
+// Reduction Simulator Hook (Mutation)
+export const useSimulateReduction = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      year,
+      month,
+      reductions
+    }: {
+      year: number;
+      month: number;
+      reductions: Record<string, number>;
+    }) => reductionSimulatorApi.simulate(year, month, reductions),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['emission-simulations'] });
+    }
+  });
+};
+
+// Scope Breakdown Hook
+export const useScopeBreakdown = (year?: number, month?: number) => {
+  return useQuery({
+    queryKey: ['scope-breakdown', year, month],
+    queryFn: () => {
+      if (year && month) {
+        return scopeBreakdownApi.getForMonth(year, month);
+      } else if (year) {
+        return scopeBreakdownApi.getForYear(year);
+      }
+      return Promise.resolve([]);
+    },
+    enabled: !!year
+  });
+};
+
+// Net Zero Projection Hook
+export const useNetZeroProjection = (baselineYear?: number, annualReduction: number = 5) => {
+  return useQuery({
+    queryKey: ['net-zero-projection', baselineYear, annualReduction],
+    queryFn: () =>
+      baselineYear
+        ? netZeroProjectionApi.calculate(baselineYear, annualReduction)
+        : Promise.resolve(null),
+    enabled: !!baselineYear
   });
 };

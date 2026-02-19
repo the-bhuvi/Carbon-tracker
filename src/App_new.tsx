@@ -103,11 +103,11 @@ const App = () => (
                     <Navigation />
                     <Routes>
                       <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/refresh-dashboard" element={<AdminRoute><RefreshDashboard /></AdminRoute>} />
                       <Route path="/carbon-neutrality" element={<CarbonNeutralityPage />} />
                       <Route path="/debug" element={<DebugUser />} />
                       <Route path="/student-survey" element={<StudentSurvey />} />
                       <Route path="/faculty-survey" element={<FacultySurvey />} />
-                      <Route path="/refresh-dashboard" element={<AdminRoute><RefreshDashboard /></AdminRoute>} />
                       
                       {/* Admin-only routes */}
                       <Route path="/admin/input" element={<AdminRoute><AdminInput /></AdminRoute>} />
