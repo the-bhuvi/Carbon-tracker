@@ -3,6 +3,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import type { CampusCarbonSummary } from '@/types/database';
+import { formatCO2 } from '@/lib/utils';
 
 interface NeutralityProgressProps {
   summary: CampusCarbonSummary;
@@ -12,16 +13,20 @@ export function NeutralityProgress({ summary }: NeutralityProgressProps) {
   const neutralityPercent = Math.min(summary.carbon_neutrality_percentage, 100);
   const isNeutral = neutralityPercent >= 100;
 
+  const totalFmt = formatCO2(summary.total_emissions);
+  const absorptionFmt = formatCO2(summary.tree_absorption_kg);
+  const netFmt = formatCO2(Math.abs(summary.net_carbon_kg));
+
   const pieData = [
     {
       name: 'Offset',
       value: Number(summary.tree_absorption_kg),
-      color: 'hsl(142, 76%, 36%)', // green
+      color: 'hsl(142, 76%, 36%)',
     },
     {
       name: 'Remaining',
       value: Math.max(0, Number(summary.net_carbon_kg)),
-      color: 'hsl(24, 95%, 53%)', // orange
+      color: 'hsl(24, 95%, 53%)',
     },
   ];
 
@@ -75,11 +80,12 @@ export function NeutralityProgress({ summary }: NeutralityProgressProps) {
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0];
+                      const fmt = formatCO2(Number(data.value));
                       return (
                         <div className="rounded-lg border bg-background p-3 shadow-md">
                           <p className="font-semibold">{data.name}</p>
                           <p className="font-medium">
-                            {Number(data.value).toLocaleString()} kg CO₂
+                            {fmt.value} {fmt.unit}
                           </p>
                         </div>
                       );
@@ -114,17 +120,13 @@ export function NeutralityProgress({ summary }: NeutralityProgressProps) {
           <div className="grid grid-cols-2 gap-4 border-t pt-4">
             <div className="text-center">
               <div className="text-sm font-medium text-muted-foreground">Total Emissions</div>
-              <div className="mt-1 text-xl font-bold">
-                {summary.total_emissions.toLocaleString()}
-              </div>
-              <div className="text-xs text-muted-foreground">kg CO₂</div>
+              <div className="mt-1 text-xl font-bold">{totalFmt.value}</div>
+              <div className="text-xs text-muted-foreground">{totalFmt.unit}</div>
             </div>
             <div className="text-center">
               <div className="text-sm font-medium text-muted-foreground">Tree Absorption</div>
-              <div className="mt-1 text-xl font-bold text-green-600">
-                {summary.tree_absorption_kg.toLocaleString()}
-              </div>
-              <div className="text-xs text-muted-foreground">kg CO₂</div>
+              <div className="mt-1 text-xl font-bold text-green-600">{absorptionFmt.value}</div>
+              <div className="text-xs text-muted-foreground">{absorptionFmt.unit}</div>
             </div>
           </div>
 
@@ -136,7 +138,7 @@ export function NeutralityProgress({ summary }: NeutralityProgressProps) {
                 Plant {summary.trees_needed_for_offset.toLocaleString()} more trees
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                or reduce emissions by {Math.abs(summary.net_carbon_kg).toLocaleString()} kg CO₂
+                or reduce emissions by {netFmt.value} {netFmt.unit}
               </p>
             </div>
           )}

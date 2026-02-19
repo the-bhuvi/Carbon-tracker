@@ -2,27 +2,6 @@
 
 A comprehensive full-stack carbon tracking and neutrality planning system for educational institutions, built with React, TypeScript, Vite, and Supabase.
 
-## ⚠️ IMPORTANT: If You're Getting Migration Errors
-
-**Getting "total_carbon_kg does not exist" or similar errors?**
-
-Your database has cached old functions. **Quick fix:**
-
-```sql
--- Run this in Supabase SQL Editor first:
-DROP TRIGGER IF EXISTS calculate_carbon_on_insert ON carbon_submissions;
-DROP FUNCTION IF EXISTS calculate_carbon_metrics();
-```
-
-Then apply migrations:
-```bash
-supabase db push
-```
-
-See **[WHICH_FIX_DO_I_NEED.md](./WHICH_FIX_DO_I_NEED.md)** for detailed troubleshooting.
-
----
-
 ## 🌟 Features
 
 ### Core Carbon Tracking
@@ -54,20 +33,15 @@ See **[WHICH_FIX_DO_I_NEED.md](./WHICH_FIX_DO_I_NEED.md)** for detailed troubles
 
 ## 🗂️ Documentation
 
-### 🚀 Getting Started (Start Here!)
-- **[MIGRATION_CHEAT_SHEET.md](./MIGRATION_CHEAT_SHEET.md)** - ⭐ Quick one-page reference for applying migrations
-- **[APPLY_MIGRATIONS_NOW.md](./APPLY_MIGRATIONS_NOW.md)** - Detailed step-by-step migration guide with verification
-- **[MIGRATION_FIXES_COMPLETE.md](./MIGRATION_FIXES_COMPLETE.md)** - Summary of all fixes made to migrations
-
-### 📚 Feature Guides
-- **[CARBON_NEUTRALITY_GUIDE.md](./CARBON_NEUTRALITY_GUIDE.md)** - Complete guide to carbon neutrality features (Phases 1-6)
-- **[GHG_PROTOCOL_INVENTORY_GUIDE.md](./GHG_PROTOCOL_INVENTORY_GUIDE.md)** - Professional GHG Protocol inventory system guide
-- **[IMPLEMENTATION_COMPLETE.md](./IMPLEMENTATION_COMPLETE.md)** - Complete implementation summary
-
-### 🔧 Technical Reference
-- **[MIGRATIONS_ALL_FIXED.md](./MIGRATIONS_ALL_FIXED.md)** - Comprehensive migration documentation with dependencies
-- **[QUICK_START.md](./QUICK_START.md)** - Original quick start guide
-- **[MIGRATION_APPLY_GUIDE.md](./MIGRATION_APPLY_GUIDE.md)** - Original migration instructions
+- **[QUICK_START.md](./QUICK_START.md)** - Getting started guide
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System architecture overview
+- **[BACKEND_GUIDE.md](./BACKEND_GUIDE.md)** - Backend & Supabase reference
+- **[AUTH_SYSTEM_GUIDE.md](./AUTH_SYSTEM_GUIDE.md)** - Authentication system guide
+- **[SURVEY_SYSTEM_GUIDE.md](./SURVEY_SYSTEM_GUIDE.md)** - Survey system guide
+- **[USER_ROLES_GUIDE.md](./USER_ROLES_GUIDE.md)** - User roles & permissions
+- **[CARBON_NEUTRALITY_GUIDE.md](./CARBON_NEUTRALITY_GUIDE.md)** - Carbon neutrality features
+- **[GHG_PROTOCOL_INVENTORY_GUIDE.md](./GHG_PROTOCOL_INVENTORY_GUIDE.md)** - GHG Protocol inventory system
+- **[TESTING_GUIDE.md](./TESTING_GUIDE.md)** - Testing reference
 
 ## Tech Stack
 
@@ -124,3 +98,6 @@ vercel --prod
 - [Auth System Guide](AUTH_SYSTEM_GUIDE.md)
 - [Survey System Guide](SURVEY_SYSTEM_GUIDE.md)
 - [User Roles Guide](USER_ROLES_GUIDE.md)
+- [Architecture](ARCHITECTURE.md)
+- [Carbon Neutrality Guide](CARBON_NEUTRALITY_GUIDE.md)
+- [Testing Guide](TESTING_GUIDE.md)

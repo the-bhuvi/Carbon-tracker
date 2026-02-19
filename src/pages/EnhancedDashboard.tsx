@@ -25,7 +25,9 @@ type ViewMode = 'monthly' | 'academic_year';
 const EnhancedDashboard = () => {
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
-  const currentAcademicYear = currentMonth >= 7 ? `${currentYear}-${currentYear + 1}` : `${currentYear - 1}-${currentYear}`;
+  // Default to current academic year if started (July+), otherwise previous
+  const defaultAcademicStart = currentMonth >= 7 ? currentYear : currentYear - 1;
+  const currentAcademicYear = `${defaultAcademicStart}-${defaultAcademicStart + 1}`;
 
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -49,7 +51,9 @@ const EnhancedDashboard = () => {
   const { data: netZeroProjection } = useNetZeroProjection(selectedYear, 5);
   const { mutateAsync: simulateReduction, isPending: isSimulating, data: simulationResult } = useSimulateReduction();
 
-  const isLoading = viewMode === 'monthly' ? !monthlyData : !academicYearSummary;
+  // Use actual query loading state, not just data presence (avoids infinite loading for empty periods)
+  const academicQueryDone = academicYearSummary !== undefined || !selectedAcademicYear;
+  const isLoading = viewMode === 'monthly' ? !monthlyData : false;
 
   // Get current month summary
   const currentMonthSummary = monthlyData?.find(m => m.month === selectedMonth);
@@ -111,11 +115,60 @@ const EnhancedDashboard = () => {
   }
 
   if (totalEmissions === 0) {
+    const periodLabel = viewMode === 'academic_year' ? selectedAcademicYear : String(selectedYear);
     return (
       <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Carbon Footprint Dashboard
+          </h1>
+        </div>
+        {/* View Mode Toggle */}
+        <div className="mb-6 flex gap-2">
+          <Button
+            variant={viewMode === 'monthly' ? 'default' : 'outline'}
+            onClick={() => setViewMode('monthly')}
+            className="gap-2"
+          >
+            <Calendar className="h-4 w-4" />
+            Monthly View
+          </Button>
+          <Button
+            variant={viewMode === 'academic_year' ? 'default' : 'outline'}
+            onClick={() => setViewMode('academic_year')}
+            className="gap-2"
+          >
+            <Calendar className="h-4 w-4" />
+            Academic Year View
+          </Button>
+        </div>
+        {/* Period selector */}
+        <div className="mb-6 flex gap-4">
+          {viewMode === 'monthly' ? (
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="px-3 py-2 border rounded-md"
+            >
+              {[currentYear - 1, currentYear, currentYear + 1].map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          ) : (
+            <select
+              value={selectedAcademicYear}
+              onChange={(e) => setSelectedAcademicYear(e.target.value)}
+              className="px-3 py-2 border rounded-md"
+            >
+              {[currentYear - 2, currentYear - 1, currentYear].filter(y => `${y}-${y+1}` !== `${currentYear}-${currentYear+1}` || currentMonth >= 7).map(y => (
+                <option key={y} value={`${y}-${y + 1}`}>{y}-{y + 1}</option>
+              ))}
+            </select>
+          )}
+        </div>
         <Alert>
           <AlertDescription>
-            No emission data available. Please enter monthly audit data using the Admin Input page.
+            No emission data available for <strong>{periodLabel}</strong>. Please select a different period or enter data using the Admin Input page.
           </AlertDescription>
         </Alert>
       </div>
@@ -188,7 +241,7 @@ const EnhancedDashboard = () => {
             onChange={(e) => setSelectedAcademicYear(e.target.value)}
             className="px-3 py-2 border rounded-md"
           >
-            {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(y => (
+            {[currentYear - 2, currentYear - 1, currentYear].filter(y => `${y}-${y+1}` !== `${currentYear}-${currentYear+1}` || currentMonth >= 7).map(y => (
               <option key={y} value={`${y}-${y + 1}`}>{y}-{y + 1}</option>
             ))}
           </select>

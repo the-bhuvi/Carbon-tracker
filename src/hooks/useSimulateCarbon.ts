@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { CarbonSimulation } from '@/types/database';
 
@@ -11,15 +12,31 @@ interface SimulationParams {
 }
 
 /**
+ * Debounce simulation params to avoid excessive API calls
+ */
+function useDebouncedParams(params: SimulationParams, delay = 400): SimulationParams {
+  const [debouncedParams, setDebouncedParams] = useState(params);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedParams(params), delay);
+    return () => clearTimeout(timer);
+  }, [params.year, params.treeCount, params.electricityReduction, params.travelReduction, params.dieselReduction, delay]);
+
+  return debouncedParams;
+}
+
+/**
  * Hook to simulate carbon reduction scenarios
  */
-export function useSimulateCarbon({
-  year,
-  treeCount = 1000,
-  electricityReduction = 0,
-  travelReduction = 0,
-  dieselReduction = 0,
-}: SimulationParams) {
+export function useSimulateCarbon(params: SimulationParams) {
+  const {
+    year,
+    treeCount = 1000,
+    electricityReduction = 0,
+    travelReduction = 0,
+    dieselReduction = 0,
+  } = useDebouncedParams(params);
+
   return useQuery({
     queryKey: [
       'carbon-simulation',
@@ -43,7 +60,8 @@ export function useSimulateCarbon({
       // The function returns a table, so we get the first row
       return (data as CarbonSimulation[])[0];
     },
-    staleTime: 0, // Always fresh for real-time simulation
+    staleTime: 30_000, // Cache results for 30 seconds
+    placeholderData: keepPreviousData, // Keep showing old data while fetching
     enabled: year > 0,
   });
 }

@@ -16,7 +16,7 @@ const EF = {
   ewaste: 3.50,        // kg - Scope 3
 };
 const TREE_ABSORPTION_KG_PER_YEAR = 21.77;
-const DEFAULT_TREE_COUNT = 1000;
+const DEFAULT_TREE_COUNT = 1256;
 
 function buildSummaryFromRows(
   rows: any[],

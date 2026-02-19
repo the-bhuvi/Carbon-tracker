@@ -21,13 +21,18 @@ import { RecommendationsPanel } from '@/components/RecommendationsPanel';
 
 type ViewMode = 'calendar' | 'academic';
 
+// Academic years start from 2024-2025 (earliest data is July 2024)
+const FIRST_ACADEMIC_YEAR_START = 2024;
+
 function buildAcademicYearOptions(currentYear: number): string[] {
-  return [
-    `${currentYear}-${currentYear + 1}`,
-    `${currentYear - 1}-${currentYear}`,
-    `${currentYear - 2}-${currentYear - 1}`,
-    `${currentYear - 3}-${currentYear - 2}`,
-  ];
+  const currentMonth = new Date().getMonth() + 1;
+  // Only include current academic year if it has started (July+)
+  const latestStart = currentMonth >= 7 ? currentYear : currentYear - 1;
+  const options: string[] = [];
+  for (let y = latestStart; y >= FIRST_ACADEMIC_YEAR_START; y--) {
+    options.push(`${y}-${y + 1}`);
+  }
+  return options;
 }
 
 function NeutralityContent({ viewMode, selectedYear, selectedAcademicYear }: {
@@ -114,10 +119,13 @@ function NeutralityContent({ viewMode, selectedYear, selectedAcademicYear }: {
 
 export function CarbonNeutralityDashboard() {
   const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+  // Default to current academic year if it has started (July+), otherwise previous
+  const defaultAcademicStart = currentMonth >= 7 ? currentYear : currentYear - 1;
   const [viewMode, setViewMode] = useState<ViewMode>('academic');
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedAcademicYear, setSelectedAcademicYear] = useState(
-    `${currentYear - 1}-${currentYear}`
+    `${Math.max(defaultAcademicStart, FIRST_ACADEMIC_YEAR_START)}-${Math.max(defaultAcademicStart + 1, FIRST_ACADEMIC_YEAR_START + 1)}`
   );
 
   const calendarYearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);

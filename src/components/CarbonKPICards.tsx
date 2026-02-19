@@ -3,6 +3,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Leaf, TrendingDown, TrendingUp, Trees } from 'lucide-react';
 import type { CampusCarbonSummary } from '@/types/database';
+import { formatCO2 } from '@/lib/utils';
 
 interface CarbonKPICardsProps {
   summary: CampusCarbonSummary;
@@ -10,6 +11,13 @@ interface CarbonKPICardsProps {
 
 export function CarbonKPICards({ summary }: CarbonKPICardsProps) {
   const isNeutral = summary.carbon_neutrality_percentage >= 100;
+
+  const totalFmt = formatCO2(summary.total_emissions);
+  const absorptionFmt = formatCO2(summary.tree_absorption_kg);
+  const netFmt = formatCO2(Math.abs(summary.net_carbon_kg));
+  const scope1Fmt = formatCO2(summary.total_scope1);
+  const scope2Fmt = formatCO2(summary.total_scope2);
+  const scope3Fmt = formatCO2(summary.total_scope3);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -21,21 +29,21 @@ export function CarbonKPICards({ summary }: CarbonKPICardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {summary.total_emissions.toLocaleString()}
+            {totalFmt.value}
           </div>
-          <p className="text-xs text-muted-foreground">kg CO₂ emitted in {summary.year}</p>
+          <p className="text-xs text-muted-foreground">{totalFmt.unit} emitted in {summary.year}</p>
           <div className="mt-2 space-y-1">
             <div className="flex items-center justify-between text-xs">
               <span>Scope 1</span>
-              <span className="font-medium">{summary.total_scope1.toLocaleString()} kg</span>
+              <span className="font-medium">{scope1Fmt.value} {scope1Fmt.unit}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span>Scope 2</span>
-              <span className="font-medium">{summary.total_scope2.toLocaleString()} kg</span>
+              <span className="font-medium">{scope2Fmt.value} {scope2Fmt.unit}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span>Scope 3</span>
-              <span className="font-medium">{summary.total_scope3.toLocaleString()} kg</span>
+              <span className="font-medium">{scope3Fmt.value} {scope3Fmt.unit}</span>
             </div>
           </div>
         </CardContent>
@@ -49,10 +57,10 @@ export function CarbonKPICards({ summary }: CarbonKPICardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-green-600">
-            {summary.tree_absorption_kg.toLocaleString()}
+            {absorptionFmt.value}
           </div>
           <p className="text-xs text-muted-foreground">
-            kg CO₂ absorbed by {summary.total_tree_count.toLocaleString()} trees
+            {absorptionFmt.unit} absorbed by {summary.total_tree_count.toLocaleString()} trees
           </p>
           <div className="mt-2">
             <div className="text-xs text-muted-foreground">
@@ -78,10 +86,10 @@ export function CarbonKPICards({ summary }: CarbonKPICardsProps) {
               isNeutral ? 'text-green-600' : 'text-orange-600'
             }`}
           >
-            {Math.abs(summary.net_carbon_kg).toLocaleString()}
+            {netFmt.value}
           </div>
           <p className="text-xs text-muted-foreground">
-            {isNeutral ? 'kg CO₂ surplus absorption' : 'kg CO₂ net emissions'}
+            {isNeutral ? `${netFmt.unit} surplus absorption` : `${netFmt.unit} net emissions`}
           </p>
           <div className="mt-2">
             <Badge variant={isNeutral ? 'default' : 'destructive'} className="text-xs">

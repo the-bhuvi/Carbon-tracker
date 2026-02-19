@@ -5,7 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Zap, Car, Fuel, Trees } from 'lucide-react';
+import { Loader2, Zap, Car, Fuel, Trees, RefreshCw } from 'lucide-react';
 import { useSimulateCarbon } from '@/hooks/useSimulateCarbon';
 
 interface CarbonSimulatorProps {
@@ -13,13 +13,13 @@ interface CarbonSimulatorProps {
   defaultTreeCount?: number;
 }
 
-export function CarbonSimulator({ year, defaultTreeCount = 1000 }: CarbonSimulatorProps) {
+export function CarbonSimulator({ year, defaultTreeCount = 1256 }: CarbonSimulatorProps) {
   const [electricityReduction, setElectricityReduction] = useState(0);
   const [travelReduction, setTravelReduction] = useState(0);
   const [dieselReduction, setDieselReduction] = useState(0);
   const [treeCount, setTreeCount] = useState(defaultTreeCount);
 
-  const { data: simulation, isLoading } = useSimulateCarbon({
+  const { data: simulation, isLoading, isFetching } = useSimulateCarbon({
     year,
     treeCount,
     electricityReduction,
@@ -34,7 +34,8 @@ export function CarbonSimulator({ year, defaultTreeCount = 1000 }: CarbonSimulat
     setTreeCount(defaultTreeCount);
   };
 
-  if (isLoading) {
+  // Only show full loading spinner on initial load (no previous data)
+  if (isLoading && !simulation) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">
@@ -60,10 +61,17 @@ export function CarbonSimulator({ year, defaultTreeCount = 1000 }: CarbonSimulat
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Carbon Reduction Simulator</CardTitle>
-        <CardDescription>
-          Adjust reduction strategies to see projected impact on emissions
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Carbon Reduction Simulator</CardTitle>
+            <CardDescription>
+              Adjust reduction strategies to see projected impact on emissions
+            </CardDescription>
+          </div>
+          {isFetching && (
+            <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Controls */}

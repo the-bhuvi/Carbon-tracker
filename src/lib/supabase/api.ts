@@ -656,28 +656,61 @@ export const carbonReductionsApi = {
 };
 
 // Neutrality API
+const TREE_COUNT = 1256;
+const TREE_ABSORPTION_KG_PER_YEAR = 21.77;
+const EF_NEUTRALITY: Record<string, number> = {
+  electricity_kwh: 0.73, diesel_liters: 2.68, petrol_liters: 2.31,
+  lpg_kg: 1.50, travel_km: 0.12, water_liters: 0.00035,
+  paper_kg: 1.70, plastic_kg: 2.00, ewaste_kg: 3.50, organic_waste_kg: 0.50,
+};
+
+function calcNeutralityPct(totalEmissions: number, months: number): number {
+  if (totalEmissions <= 0) return 0;
+  const absorption = TREE_COUNT * TREE_ABSORPTION_KG_PER_YEAR * (months / 12);
+  return Math.min(parseFloat(((absorption / totalEmissions) * 100).toFixed(2)), 100);
+}
+
+function rowsToTotal(rows: any[]): number {
+  return rows.reduce((sum, r) => {
+    return sum + Object.entries(EF_NEUTRALITY).reduce((s, [col, ef]) => s + parseFloat(r[col] || 0) * ef, 0);
+  }, 0);
+}
+
 export const neutralityApi = {
   // Calculate monthly neutrality percentage
   async getMonthlyNeutrality(year: number, month: number): Promise<number> {
     const { data, error } = await supabase
-      .rpc('calculate_monthly_neutrality', {
-        p_year: year,
-        p_month: month
-      });
+      .rpc('calculate_monthly_neutrality', { p_year: year, p_month: month });
+    if (!error && data) return data;
 
-    if (error) return 0; // RPC may not exist yet; default to 0
-    return data || 0;
+    // Fallback: compute from carbon_submissions
+    const pad = String(month).padStart(2, '0');
+    // Use first day of next month instead of hardcoded -31 (Feb doesn't have 31 days)
+    const nextMonth = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const { data: rows } = await supabase
+      .from('carbon_submissions')
+      .select('electricity_kwh,diesel_liters,petrol_liters,lpg_kg,travel_km,water_liters,paper_kg,plastic_kg,ewaste_kg,organic_waste_kg')
+      .gte('submission_date', `${year}-${pad}-01`)
+      .lt('submission_date', nextMonth);
+    if (!rows || rows.length === 0) return 0;
+    return calcNeutralityPct(rowsToTotal(rows), 1);
   },
 
   // Calculate academic year neutrality percentage
   async getAcademicYearNeutrality(academicYear: string): Promise<number> {
     const { data, error } = await supabase
-      .rpc('calculate_academic_year_neutrality', {
-        p_academic_year: academicYear
-      });
+      .rpc('calculate_academic_year_neutrality', { p_academic_year: academicYear });
+    if (!error && data) return data;
 
-    if (error) return 0; // RPC may not exist yet; default to 0
-    return data || 0;
+    // Fallback: compute from carbon_submissions
+    const [startYear, endYear] = academicYear.split('-').map(Number);
+    const { data: rows } = await supabase
+      .from('carbon_submissions')
+      .select('electricity_kwh,diesel_liters,petrol_liters,lpg_kg,travel_km,water_liters,paper_kg,plastic_kg,ewaste_kg,organic_waste_kg')
+      .gte('submission_date', `${startYear}-07-01`)
+      .lte('submission_date', `${endYear}-06-30`);
+    if (!rows || rows.length === 0) return 0;
+    return calcNeutralityPct(rowsToTotal(rows), 12);
   }
 };
 

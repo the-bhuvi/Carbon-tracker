@@ -45,6 +45,7 @@ const Dashboard = () => {
   const { data: academicYearNeutrality = 0 } = useAcademicYearNeutrality(selectedAcademicYear);
 
   const isLoading = viewMode === 'monthly' ? monthlyLoading : academicLoading;
+  const hasNoAcademicData = viewMode === 'academic_year' && !academicLoading && !academicYearSummary;
   const queryError = viewMode === 'monthly' ? monthlyError : academicError;
 
   // Get current month summary
@@ -111,28 +112,72 @@ const Dashboard = () => {
     );
   }
 
-  if (totalEmissions === 0) {
-    const yearOptions = availableYears.length > 0 ? availableYears : [2024, 2025, 2026, 2027];
+  if (hasNoAcademicData || totalEmissions === 0) {
+    const yearOptions = availableYears.length > 0 ? availableYears : [2024, 2025, 2026];
+    const periodLabel = viewMode === 'academic_year' ? selectedAcademicYear : String(selectedYear);
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-4 flex gap-2 items-center">
-          <span className="text-sm text-gray-600">Year:</span>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="px-3 py-1 border rounded-md text-sm"
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Carbon Footprint Dashboard
+          </h1>
+        </div>
+        {/* View Mode Toggle */}
+        <div className="mb-6 flex gap-2">
+          <Button
+            variant={viewMode === 'monthly' ? 'default' : 'outline'}
+            onClick={() => setViewMode('monthly')}
+            className="gap-2"
           >
-            {yearOptions.map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
+            <Calendar className="h-4 w-4" />
+            Monthly View
+          </Button>
+          <Button
+            variant={viewMode === 'academic_year' ? 'default' : 'outline'}
+            onClick={() => setViewMode('academic_year')}
+            className="gap-2"
+          >
+            <Calendar className="h-4 w-4" />
+            Academic Year View
+          </Button>
+        </div>
+        <div className="mb-4 flex gap-2 items-center">
+          {viewMode === 'monthly' ? (
+            <>
+              <span className="text-sm text-gray-600">Year:</span>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="px-3 py-1 border rounded-md text-sm"
+              >
+                {yearOptions.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <>
+              <span className="text-sm text-gray-600">Academic Year:</span>
+              <select
+                value={selectedAcademicYear}
+                onChange={(e) => setSelectedAcademicYear(e.target.value)}
+                className="px-3 py-1 border rounded-md text-sm"
+              >
+                {['2024-2025', '2025-2026'].map(ay => (
+                  <option key={ay} value={ay}>{ay}</option>
+                ))}
+              </select>
+            </>
+          )}
         </div>
         <Alert>
           <AlertDescription>
-            No emission data found for <strong>{selectedYear}</strong>.{' '}
-            {availableYears.length > 0
-              ? `Data is available for: ${availableYears.join(', ')}. Please select one of those years.`
-              : 'Please enter monthly audit data using the Admin Input page.'}
+            No emission data found for <strong>{periodLabel}</strong>.{' '}
+            {viewMode === 'academic_year'
+              ? 'This academic year may not have started yet or has no data. Please select a different academic year.'
+              : availableYears.length > 0
+                ? `Data is available for: ${availableYears.join(', ')}. Please select one of those years.`
+                : 'Please enter monthly audit data using the Admin Input page.'}
           </AlertDescription>
         </Alert>
       </div>
@@ -211,7 +256,7 @@ const Dashboard = () => {
             onChange={(e) => setSelectedAcademicYear(e.target.value)}
             className="px-3 py-2 border rounded-md"
           >
-            {['2024-2025', '2025-2026', '2026-2027'].map(ay => (
+            {['2024-2025', '2025-2026'].map(ay => (
               <option key={ay} value={ay}>{ay}</option>
             ))}
           </select>
